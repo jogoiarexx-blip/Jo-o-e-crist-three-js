@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.1.6 — locomoção física, Pantera animada e interiores).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Primeiro protótipo jogável (v0.2.0 — Capítulo 1: cidade e rodoviária jogáveis).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -11,6 +11,19 @@ https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 **Celular:** analógico à esquerda, botões AÇÃO / TROCAR / ESQUIVAR, arrastar a tela gira a câmera.
 
 **Gamepad:** analógico esquerdo move, direito gira a câmera, A interage, B esquiva, Y troca personagem, Start pausa (diálogos e bicicleta estão acessíveis por teclado/touch; integração completa do gamepad seguirá).
+
+## Capítulo 1 — A Rodoviária (v0.2.0)
+Esta revisão, autorizada pelo usuário após a Fazenda, amplia **sem retirar** as cenas anteriores:
+- Mapa da praça e sinalização do terminal; faixa de pedestres na cidade.
+- Manutenção do quase acidente de bicicleta, com falha recuperável.
+- Mala trocada e desafio de etiqueta: **Crist** identifica 042, fita azul.
+- Guichê e desafio de embarque: **Crist** confere PORTÃO 2, transporte ao aeroporto.
+- Dona Nena (florista), Seu Tonico (carregador) e motorista Beto, com diálogos opcionais e personagens procedurais 3D.
+- Ônibus roxo, entrada na Excursão Estelar e encerramento cômico preservados.
+- Salvamento da versão 3 com migração de saves anteriores; interface responsiva dos puzzles para teclado, toque e gamepad.
+- Documento específico: [FASE-02-RODOVIARIA.md](FASE-02-RODOVIARIA.md).
+
+**Importante:** testes de código e lógica não substituem jogar no navegador. QA desktop e Android permanece pendente.
 
 ## O que já é jogável
 
@@ -45,7 +58,7 @@ npm test verifica o roteiro e a validação de saves. npm run check verifica a s
 O workflow publica o conteúdo da raiz quando houver push na branch main. Se este for o primeiro uso do Pages no repositório, é necessário habilitar **Settings → Pages → Build and deployment → Source: GitHub Actions**. A execução pode ser acompanhada na aba Actions.
 
 ## Desenvolvimento fase a fase
-A prioridade atual é **Fase 1 — Fazenda**. Não estamos expandindo as demais áreas até fechar um checklist real de jogabilidade: navegação, interações, narrativa, câmera, colisões, controles e testes manuais em Android/desktop. A cidade e o ônibus continuam no protótipo, mas serão refinados em etapas posteriores.
+A prioridade atual, por solicitação explícita, é **Capítulo 1 — A Rodoviária**. A Fazenda foi preservada sem remoções e suas pendências de QA visual seguem registradas. Desenvolveremos o novo capítulo com validação de objetivos, diálogos, colisões, controles e saves, mantendo a sequência completa. Leia [FASE-02-RODOVIARIA.md](FASE-02-RODOVIARIA.md).
 
 ### Evolução 0.1.2: mais conteúdo só na Fazenda
 - Cena visual da loteria: conferir as seis dezenas do bilhete, revelar o resultado, comemorar.
@@ -105,4 +118,4 @@ A prioridade atual é **Fase 1 — Fazenda**. Não estamos expandindo as demais 
 
 ## Próximas prioridades
 
-**Concluir a Fazenda antes de avançar.** Substituir os personagens procedurais pelos modelos GLB rigados (idle/walk/run/talk); adicionar ponte GLB sem quebrar o placeholder; ampliar a rodoviária, implementando o ônibus de artistas, sua tripulação e o primeiro desafio dentro do veículo; testar mobile, melhorar câmera/colisões e inserir trilha sonora original.
+**Validar a Rodoviária do início ao fim** e melhorar a sinalização, os três NPCs, as interações e o desempenho em Android. Depois, com o capítulo aprovado, construir o interior do ônibus e a Excursão Errada. Manter a Fazenda e o jogo 2D sem alterações regressivas.

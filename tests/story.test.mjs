@@ -3,34 +3,42 @@ import assert from 'node:assert/strict';
 import {QUESTS,SCENES,INTRO,getQuest,validateSave,PACKING_ITEMS,normalizePacking,nextPackingTarget,getPackingProgress,LOTTERY_NUMBERS,SAVE_VERSION,FINAL_STEP,canUsePackingItem} from '../src/story.js';
 
 test('campanha ampliada: despertar, sorteio, bilhete, conversa e TODAS as cenas antigas',()=>{
-  assert.equal(QUESTS.length,10);
-  assert.equal(FINAL_STEP,9);
-  assert.deepEqual(QUESTS.map(q=>q.id),['wake','radio','ticket','crist','suitcase','pantera','gate','crossing','bus','done']);
+  assert.equal(QUESTS.length,13);
+  assert.equal(FINAL_STEP,12);
+  assert.deepEqual(QUESTS.map(q=>q.id),['wake','radio','ticket','crist','suitcase','pantera','gate','cityWelcome','crossing','cityBag','cityClerk','bus','done']);
   assert.equal(getQuest(99).id,'done');
   assert.equal(getQuest(-1).id,'wake');
-  assert.equal(getQuest(7).id,'crossing');
-  assert.equal(getQuest(8).id,'bus');
+  assert.equal(getQuest(7).id,'cityWelcome');
+  assert.equal(getQuest(8).id,'crossing');
+  assert.equal(getQuest(9).id,'cityBag');
+  assert.equal(getQuest(10).id,'cityClerk');
+  assert.equal(getQuest(11).id,'bus');
 });
 test('diálogos principais estão presentes',()=>{
   assert.ok(INTRO.length>=4);
-  for(const key of ['wake','ticket','radio','crist','suitcase','pantera','gate','bikeOK','bikeHit','bus']){
+  for(const key of ['wake','ticket','radio','crist','suitcase','pantera','gate','cityWelcome','bagWrong','bagSolved','routeWrong','routeSolved','bikeOK','bikeHit','bus']){
     assert.ok(Array.isArray(SCENES[key]) && SCENES[key].length>=3,key);
     for(const line of SCENES[key])assert.ok(line.length===2&&line[0]&&line[1]);
   }
 });
-test('saves antigos mantêm a fase e os itens, sem perder cidade, bicicleta e ônibus',()=>{
-  assert.equal(SAVE_VERSION,2);
-  assert.deepEqual(validateSave(null),{version:2,step:0,hero:'joao',packing:[]});
+test('saves v1 e v2 preservam capítulos, itens e conteúdo sem regressão',()=>{
+  assert.equal(SAVE_VERSION,3);
+  assert.deepEqual(validateSave(null),{version:3,step:0,hero:'joao',packing:[]});
   assert.equal(validateSave({version:1,step:1,hero:'crist'}).step,2);
   assert.equal(validateSave({version:1,step:2,hero:'crist'}).step,3);
   assert.equal(validateSave({version:1,step:3,packing:['documents']}).step,4);
   assert.deepEqual(validateSave({version:1,step:3,packing:['documents']}).packing,['documents']);
   assert.equal(validateSave({version:1,step:6}).step,7);
-  assert.equal(validateSave({version:1,step:7}).step,8);
-  assert.equal(validateSave({version:1,step:8}).step,9);
+  assert.equal(validateSave({version:1,step:7}).step,9);
+  assert.equal(validateSave({version:1,step:8}).step,12);
+  assert.equal(validateSave({version:2,step:7}).step,7);
+  assert.equal(validateSave({version:2,step:8}).step,9);
+  assert.equal(validateSave({version:2,step:9}).step,12);
+  assert.equal(validateSave({version:3,step:10}).step,10);
+  assert.equal(validateSave({version:3,step:11}).step,11);
+  assert.equal(validateSave({version:3,step:200}).step,12);
   assert.equal(validateSave({version:1,step:-3}).step,0);
-  assert.equal(validateSave({version:2,step:200}).step,9);
-  assert.equal(validateSave({version:2,step:4,hero:'forged'}).hero,'joao');
+  assert.equal(validateSave({version:3,step:4,hero:'forged'}).hero,'joao');
   assert.equal(validateSave({version:99,step:7}).step,0);
   assert.deepEqual(validateSave({version:1,step:4,hero:'joao'}).packing,['documents','clothes','farofa']);
 });

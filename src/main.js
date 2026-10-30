@@ -7,6 +7,7 @@ import {isInsideHouse,FARM_HOUSE} from './farm-layout.js';
 import {FARM_MEMORIES,nearbyMemory,normalizeMemories} from './farm-memories.js';
 import {cameraRig} from './camera-logic.js';
 import {easeVelocity,moveWithCollision,joystickYaw} from './locomotion.js';
+import {CITY_CHOICES,findCityNpc,checkCityAnswer} from './city-state.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
@@ -16,13 +17,14 @@ const ui={canvas:el('game'),loading:el('loading'),hud:el('hud'),mission:el('miss
   promptText:el('promptText'),toast:el('toast'),dialog:el('dialog'),speaker:el('dialogSpeaker'),
   dialogText:el('dialogText'),dialogCount:el('dialogCount'),start:el('startScreen'),
   pause:el('pauseScreen'),end:el('endScreen'),mobile:el('mobileControls'),
-  event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText'),lottery:el('lotteryPanel'),lotteryButton:el('lotteryButton'),lotteryReveal:el('lotteryReveal'),soundBtn:el('soundBtn')};
+  event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText'),lottery:el('lotteryPanel'),lotteryButton:el('lotteryButton'),lotteryReveal:el('lotteryReveal'),soundBtn:el('soundBtn'),choice:el('cityChoice'),choiceHeading:el('cityChoiceHeading'),choiceText:el('cityChoiceText'),choiceButtons:el('cityChoiceButtons')};
 const SAVE_KEY='joaoCrist3DSave_v1';
 const MEMORY_KEY='joaoCrist3DFarmMemories_v1';
 const DEBUG=new URLSearchParams(location.search).has('debug');
 let renderer,scene,camera,world,actors,heroId='joao',step=0,packing=[],started=false,paused=false;
 let yaw=1.12,pitch=.48,zoom=8.2,clockTime=0,lastFrame=0,toastTimer=0;
 let dialogue=null,bikeEvent=null,lotteryOpen=false,lotteryStage=0,lotteryAccepted=false,prevPad={};
+let choiceKind=null,choiceIndex=0;
 let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null;
 let walking={x:0,z:0},lastStepSound=0;
 const SOUND_KEY='joaoCrist3DSound_v1';
@@ -83,7 +85,7 @@ function updateMission(){
     ui.objective.textContent='Arrume as malas — '+getPackingProgress(packing)+'/3';
     ui.hint.textContent=item?item.hint:'Itens reunidos! Troque para João e volte à mala dentro da casa.';
   }
-  el('chapter').textContent=step>=7?'CAPÍTULO 02 · RODOVIÁRIA':'CAPÍTULO 01 · FAZENDA';
+  el('chapter').textContent=step>=7?'CAPÍTULO 01 · RODOVIÁRIA':'CAPÍTULO 00 · FAZENDA';
   ui.mission.hidden=step>=FINAL_STEP;
   world.setTarget(target);
   world.setPacked?.(packing);
@@ -124,6 +126,7 @@ function nearTarget(){
 }
 function useTarget(){
   if(paused||!started)return;
+  if(choiceKind)return;
   if(lotteryOpen){checkLottery();return;}
   if(dialogue){nextDialogue();return;}
   if(bikeEvent){dodge();return;}
@@ -136,10 +139,22 @@ function useTarget(){
       showDialogue(extra.lines,()=>notify('Lembrança da Fazenda: '+memories.size+'/'+FARM_MEMORIES.length+'.'));
       return;
     }
-    notify('Siga o marcador da missão ou explore a Fazenda em busca de histórias.');
+    if(step>=7&&step<FINAL_STEP){
+      const npc=findCityNpc(actors[heroId].position);
+      if(npc){showDialogue(npc.lines);return;}
+      notify('Siga o marcador ou converse com os moradores da rodoviária.');
+    }else notify('Siga o marcador da missão ou explore a Fazenda em busca de histórias.');
     return;
   }
-  if(step===7){startBike();return;}
+  if(step===8){startBike();return;}
+  if(step===9){
+    if(heroId!=='crist'){notify('Crist precisa conferir o comprovante da mala. Use TAB ou TROCAR.');return;}
+    openCityChoice('bag');return;
+  }
+  if(step===10){
+    if(heroId!=='crist'){notify('Crist precisa ler a passagem e escolher o portão. Use TAB ou TROCAR.');return;}
+    openCityChoice('route');return;
+  }
   if(step===2&&!lotteryAccepted){openLottery();return;}
   if(step===4&&!canUsePackingItem(target.id,heroId)){
     const expected=target.id==='suitcase'?'JOÃO':target.id==='documents'||target.id==='clothes'?'CRIST':'JOÃO';
@@ -161,7 +176,7 @@ function useTarget(){
     return;
   }
   const activeStep=step;
-  const scenes=[SCENES.wake,SCENES.radio,SCENES.ticket,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,null,SCENES.bus];
+  const scenes=[SCENES.wake,SCENES.radio,SCENES.ticket,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,SCENES.cityWelcome,null,null,null,SCENES.bus];
   const lines=scenes[activeStep];
   if(!lines)return;
   if(activeStep===2)winSound();else tone(600,.13,'triangle',.03);
@@ -170,16 +185,57 @@ function useTarget(){
   showDialogue(lines,()=>{
     if(activeStep===6){
       // Preserva a cidade e a viagem da versão anterior, depois de concluir a Fazenda.
-      actors[heroId].position.set(49,0,9);
+      actors[heroId].position.set(49,0,21);
       const other=heroId==='joao'?'crist':'joao';
-      actors[other].position.set(47,0,12);
+      actors[other].position.set(47.5,0,20);
       snapCamera();notify('Fase 1 concluída! Agora vocês seguem à rodoviária.');
-    } else if(activeStep===8){
+    } else if(activeStep===11){
       world.bike.visible=false;
     }
     advanceTo(activeStep+1);
   });
 }
+
+function openCityChoice(kind){
+  const puzzle=CITY_CHOICES[kind];
+  if(!puzzle||dialogue||lotteryOpen||choiceKind||paused)return;
+  choiceKind=kind;choiceIndex=0;
+  ui.choiceHeading.textContent=puzzle.heading;
+  ui.choiceText.textContent=puzzle.text;
+  ui.choiceButtons.replaceChildren();
+  for(let i=0;i<puzzle.options.length;i++){
+    const option=puzzle.options[i],btn=document.createElement('button');
+    btn.type='button';btn.className='city-choice-button';
+    btn.textContent=(i+1)+'. '+option.label;
+    btn.addEventListener('click',()=>submitCityChoice(option.id));
+    ui.choiceButtons.appendChild(btn);
+  }
+  ui.choice.hidden=false;ui.mobile.hidden=true;ui.prompt.hidden=true;
+  focusCityChoice(0);
+}
+function focusCityChoice(index){
+  if(!choiceKind)return;
+  const items=[...ui.choiceButtons.children];
+  if(!items.length)return;
+  choiceIndex=(index+items.length)%items.length;
+  items.forEach((button,i)=>button.setAttribute('aria-selected',String(i===choiceIndex)));
+  items[choiceIndex].focus();
+}
+function submitCityChoice(optionId){
+  if(paused||!started||!choiceKind)return;
+  const kind=choiceKind,correct=checkCityAnswer(kind,optionId);
+  choiceKind=null;ui.choice.hidden=true;
+  ui.mobile.hidden=paused||!mobile;
+  if(correct){
+    tone(640,.2,'triangle',.033);
+    const lines=kind==='bag'?SCENES.bagSolved:SCENES.routeSolved;
+    showDialogue(lines,()=>advanceTo(kind==='bag'?10:11));
+  }else{
+    tone(194,.15,'square',.022);
+    showDialogue(kind==='bag'?SCENES.bagWrong:SCENES.routeWrong);
+  }
+}
+
 function openLottery(){
   if(lotteryOpen||dialogue||paused)return;
   lotteryOpen=true;lotteryStage=0;
@@ -216,11 +272,11 @@ function finishBike(){
   bikeEvent.ended=true;bikeEvent=null;ui.event.hidden=true;
   if(good){tone(700,.1,'triangle');notify('UFA! Desviou por pouco!');}
   else {tone(165,.35,'sawtooth',.04);notify('Quase virou notícia no jornal!');}
-  showDialogue(good?SCENES.bikeOK:SCENES.bikeHit,()=>{world.bike.visible=false;advanceTo(8);});
+  showDialogue(good?SCENES.bikeOK:SCENES.bikeHit,()=>{world.bike.visible=false;advanceTo(9);});
 }
 function togglePause(){
   if(!started||ui.end.hidden===false)return;
-  paused=!paused;ui.pause.hidden=!paused;ui.mobile.hidden=paused||!mobile;
+  paused=!paused;ui.pause.hidden=!paused;ui.mobile.hidden=paused||!!choiceKind||lotteryOpen||!mobile;
   ui.prompt.hidden=true;
   if(paused){held.clear();walking={x:0,z:0};}
 }
@@ -235,6 +291,10 @@ function pollGamepadActions(){
     const down=!!pad.buttons[i]?.pressed;
     if(down&&!prevPad[name]){
       if(name==='pause')togglePause();
+      else if(!paused&&choiceKind){
+        if(name==='act')submitCityChoice(CITY_CHOICES[choiceKind].options[choiceIndex].id);
+        if(name==='switch')focusCityChoice(choiceIndex+1);
+      }
       else if(!paused){
         if(name==='act')useTarget();
         if(name==='dodge')dodge();
@@ -376,7 +436,7 @@ function update(dt){
     ui.eventBar.style.transform='scaleX('+clamp(1-t,0,1)+')';
     if(t>=1)finishBike();
   }else if(!dialogue&&!lotteryOpen){
-    if(step===7&&nearTarget())startBike();
+    if(step===8&&nearTarget())startBike();
   }
   const marker=world.markers[activeTargetId()];
   if(marker&&step<FINAL_STEP){
@@ -386,9 +446,10 @@ function update(dt){
     ui.pointer.style.transform='rotate('+(-look*180/Math.PI)+'deg)';
     const close=distance<=marker.radius;
     const extra=step<=6&&!close?nearbyMemory(pos,[...memories]):null;
-    ui.prompt.hidden=(!close&&!extra)||!!dialogue||!!bikeEvent||lotteryOpen;
-    ui.promptText.textContent=close?(step===7?'Atravesse com cuidado':marker.label):
-      extra?'Conhecer: '+extra.name:'Interagir';
+    const cityNpc=step>=7&&!close?findCityNpc(pos):null;
+    ui.prompt.hidden=(!close&&!extra&&!cityNpc)||!!dialogue||!!bikeEvent||lotteryOpen||!!choiceKind;
+    ui.promptText.textContent=close?(step===8?'Atravesse com cuidado':marker.label):
+      extra?'Conhecer: '+extra.name:cityNpc?'Conversar: '+cityNpc.name:'Interagir';
   }else ui.prompt.hidden=true;
   updateCamera(dt);
 }
@@ -415,7 +476,10 @@ function start(){
     step===2?{x:-7.5,z:2.5}:
     step===4?{x:-12.2,z:-6.2}:
     step<=6?{x:-1.5,z:5}:
-    step===7?{x:49,z:9}:{x:77,z:11};
+    step===7?{x:49,z:21}:
+    step===8?{x:62,z:19.2}:
+    step===9?{x:79,z:2.7}:
+    step===10?{x:71,z:2.0}:{x:91,z:2.5};
   actors.joao.position.set(spawn.x,0,spawn.z);
   actors.crist.position.set(spawn.x+1.3,0,spawn.z+0.5);
   setHero(data.hero,true);started=true;paused=false;
@@ -423,6 +487,7 @@ function start(){
   ui.start.hidden=true;ui.loading.hidden=true;ui.hud.hidden=false;ui.mobile.hidden=!mobile;
   updateMission();snapCamera();
   if(step===0)showDialogue(INTRO,()=>notify('Caminhe até o café dentro da casa para começar o dia.'));
+  else if(step===7)notify('Bem-vindos à cidade! Procure o painel de informações da praça.');
   else notify('Progresso recuperado: '+getQuest(step).title);
   ui.soundBtn.textContent=soundEnabled?'♪':'×';
   ui.soundBtn.setAttribute('aria-label',soundEnabled?'Desativar som':'Ativar som');
@@ -431,12 +496,22 @@ function start(){
 function bindInputs(){
   const actionKeys=new Set(['Space','Tab','ArrowUp','ArrowDown','ArrowLeft','ArrowRight']);
   window.addEventListener('keydown',e=>{
-    if(actionKeys.has(e.code)||(lotteryOpen&&e.code==='Enter'))e.preventDefault();
+    if(actionKeys.has(e.code)||(lotteryOpen&&e.code==='Enter')||(choiceKind&&['Enter','KeyE','Digit1','Digit2','Digit3'].includes(e.code)))e.preventDefault();
     held.add(e.code);
     if(e.repeat)return;
     if(e.code==='Escape'){togglePause();return;}
+    if(choiceKind&&!paused){
+      const numbers={Digit1:0,Digit2:1,Digit3:2};
+      if(Object.hasOwn(numbers,e.code)){
+        submitCityChoice(CITY_CHOICES[choiceKind].options[numbers[e.code]].id);return;
+      }
+      if(e.code==='ArrowRight'||e.code==='ArrowDown'||e.code==='Tab'){focusCityChoice(choiceIndex+1);return;}
+      if(e.code==='ArrowLeft'||e.code==='ArrowUp'){focusCityChoice(choiceIndex-1);return;}
+      if(e.code==='KeyE'||e.code==='Enter'||e.code==='Space'){submitCityChoice(CITY_CHOICES[choiceKind].options[choiceIndex].id);return;}
+      return;
+    }
     if(!started||paused)return;
-    if(e.code==='Tab'&&!dialogue&&!bikeEvent){setHero(heroId==='joao'?'crist':'joao');return;}
+    if(e.code==='Tab'&&!dialogue&&!bikeEvent&&!lotteryOpen){setHero(heroId==='joao'?'crist':'joao');return;}
     if(e.code==='KeyE'||e.code==='Enter'){useTarget();return;}
     if(e.code==='Space'){dodge();}
   });
@@ -452,7 +527,7 @@ function bindInputs(){
   el('restartBtn').addEventListener('click',restart);
   el('replayBtn').addEventListener('click',restart);
   el('touchAction').addEventListener('pointerdown',e=>{e.preventDefault();useTarget();});
-  el('touchSwitch').addEventListener('pointerdown',e=>{e.preventDefault();if(started&&!dialogue&&!bikeEvent)setHero(heroId==='joao'?'crist':'joao');});
+  el('touchSwitch').addEventListener('pointerdown',e=>{e.preventDefault();if(started&&!dialogue&&!bikeEvent&&!choiceKind&&!lotteryOpen)setHero(heroId==='joao'?'crist':'joao');});
   el('touchDodge').addEventListener('pointerdown',e=>{e.preventDefault();dodge();});
   let cameraPointer=null,lastX=0,lastY=0;
   ui.canvas.addEventListener('pointerdown',e=>{if(!started||paused||dialogue||lotteryOpen)return;cameraPointer=e.pointerId;lastX=e.clientX;lastY=e.clientY;ui.canvas.setPointerCapture(e.pointerId);});

@@ -77,7 +77,7 @@ João e Crist são dois amigos idosos que moram no interior. Após achar o bilhe
 - [ ] Obter avaliação da narrativa e da diversão da Fazenda antes de avançar.
 
 ## Regra de produção
-**Não iniciar a Fase 2 de fato antes de encerrar as pendências críticas da Fase 1.** A cidade e o ônibus presentes na v0.1.0 continuam como protótipos para evitar perder trabalho; não contam como fases prontas.
+**Atualização de decisão em 30/10/2026:** o usuário autorizou explicitamente avançar para o **Capítulo 1 — A Rodoviária** sem remover ou diminuir a Fazenda. As pendências de QA manual da Fazenda continuam abertas para verificação regressiva. Consulte `FASE-02-RODOVIARIA.md` para o capítulo seguinte.
 
 ## Verificações técnicas
 Testes automáticos validam sintaxe, lógica da lista de itens, save e progressão. Não representam execução gráfica no navegador. Registrar achados com captura e passos de reprodução quando houver teste manual.

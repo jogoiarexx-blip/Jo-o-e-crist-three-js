@@ -6,9 +6,12 @@ export const QUESTS=[
   {id:'suitcase',title:'Arrume as malas',hint:'Entre na casa, pegue os documentos na escrivaninha, separe as roupas e a farofa; depois feche a mala no quarto.'},
   {id:'pantera',title:'Despeça-se de Pantera',hint:'Uma boa aventura merece uma despedida.'},
   {id:'gate',title:'Abra a porteira da fazenda',hint:'Siga a cerca até a porteira de madeira, perto da estrada. Abra-a antes de sair.'},
-  {id:'crossing',title:'Atravesse a rua com cuidado',hint:'Siga pela cidade. Aqui até bicicleta assusta!'},
-  {id:'bus',title:'Embarque na excursão para Vegas',hint:'O ônibus roxo está estacionado ao lado da rodoviária.'},
-  {id:'done',title:'Prólogo concluído!',hint:'A viagem acabou de começar...'}
+  {id:'cityWelcome',title:'Conheça a praça e encontre a rodoviária',hint:'Na praça, leia o painel de informações e encontre a rodoviária. Você também pode conversar com moradores.'},
+  {id:'crossing',title:'Atravesse a faixa com cuidado',hint:'Vá à faixa de pedestres perto da rodoviária. Cuidado com o ciclista apressado!'},
+  {id:'cityBag',title:'Recupere a mala certa',hint:'A bagagem foi parar no carrinho do carregador. Troque para Crist e compare a etiqueta do comprovante.'},
+  {id:'cityClerk',title:'Confira o portão das passagens',hint:'Com Crist, examine as passagens no guichê e encontre o portão correto para o aeroporto.'},
+  {id:'bus',title:'Encontre João e embarque na excursão',hint:'O ônibus roxo está no terminal. João quer entrar antes de ouvir o aviso completo.'},
+  {id:'done',title:'Rodoviária concluída!',hint:'Próxima parada: a excursão errada.'}
 ];
 // Resultado inteiramente fictício, usado só no roteiro.
 export const LOTTERY_NUMBERS=Object.freeze([3,11,18,27,42,56]);
@@ -66,6 +69,32 @@ export const SCENES={
     ['JOÃO','Se tiver escrito Vegas, é nele que eu entro.'],
     ['CRIST','Não era bem isso que eu queria ouvir...']
   ],
+  cityWelcome:[
+    ['NARRADOR','O ônibus da fazenda ficou para trás. João e Crist finalmente chegam à cidade, onde tudo parece acontecer depressa.'],
+    ['JOÃO','Olha esse mundaréu de lojas! Nem parece que estamos a poucos quilômetros de casa!'],
+    ['CRIST','Primeiro a rodoviária. Depois a gente se perde com calma.'],
+    ['DONA NENA','Bom dia, viajantes! A rodoviária fica depois da faixa de pedestres. Atenção com as bicicletas!']
+  ],
+  bagWrong:[
+    ['CRIST','Essa não é a nossa! A etiqueta não bate com o comprovante.'],
+    ['JOÃO','Se fosse a mala com a sanfona, pelo menos eu aprendia uma música!'],
+    ['SEU TONICO','Olhem com calma: o número certo tem zero, quatro e dois, nessa ordem.']
+  ],
+  bagSolved:[
+    ['CRIST','Etiqueta 042, fita azul. Agora sim: a mala é nossa!'],
+    ['SEU TONICO','Ainda bem. A última pessoa levou minha caixa de ferramentas achando que era bagagem.'],
+    ['JOÃO','Nossa roupa está aqui! E a farofa, que é mais importante!']
+  ],
+  routeWrong:[
+    ['FUNCIONÁRIA','Esse portão não combina com a passagem de vocês. Leiam o destino, não só o número!'],
+    ['CRIST','João, se você conseguir escolher sozinho, vamos parar numa apresentação de teatro.'],
+    ['JOÃO','Teatro? Eu até que danço bem, desde que não precise subir num palco!']
+  ],
+  routeSolved:[
+    ['FUNCIONÁRIA','Muito bem! O transporte ao aeroporto sai do portão 2. Esperem pelo anúncio.'],
+    ['CRIST','Ouviu, João? PORTÃO DOIS. Não é qualquer ônibus com luzes piscando!'],
+    ['JOÃO','Uai, mas aquela excursão roxa está tão bonita...']
+  ],
   bikeOK:[
     ['CICLISTA','Foi mal, senhor! Não vi vocês atravessando!'],
     ['CRIST','João! A gente mal saiu de casa e já quase virou manchete!'],
@@ -77,7 +106,7 @@ export const SCENES={
     ['JOÃO','Ainda bem que meu chapéu continua inteiro.']
   ],
   bus:[
-    ['JOÃO','Olha lá, Crist! Tá escrito EXCURSÃO ESTELAR. Vegas deve ser logo ali!'],
+    ['JOÃO','Olha lá, Crist! Tá escrito EXCURSÃO ESTELAR. Dizem que tem espetáculo e tudo!'],
     ['CRIST','João... esse ônibus está cheio de roupa brilhante.'],
     ['ARTISTA','Entrem, meus amores! Vamos fazer um espetáculo inesquecível!'],
     ['JOÃO','Viu? Até recepção chique nós temos!'],
@@ -100,8 +129,8 @@ export function nextPackingTarget(value){
   const done=new Set(normalizePacking(value));
   return PACKING_ITEMS.find(item=>!done.has(item.id))?.id||'suitcase';
 }
-export const SAVE_VERSION=2;
-export const FINAL_STEP=9;
+export const SAVE_VERSION=3;
+export const FINAL_STEP=12;
 export function getPackingProgress(value){return normalizePacking(value).length;}
 export function canUsePackingItem(id,hero){
   if(id==='suitcase')return hero==='joao';
@@ -110,14 +139,25 @@ export function canUsePackingItem(id,hero){
 export function getQuest(step){
   return QUESTS[Math.min(FINAL_STEP,Math.max(0,Number.isFinite(Number(step))?Math.floor(Number(step)):0))];
 }
+// A edição 3D preserva a mesma chave de localStorage para migrar progresso.
+// v1 antiga: bilhete, rádio, conversa, malas, despedida, portão, ciclista, ônibus, fim.
+// v2: despertar, rádio, bilhete, conversa, malas, despedida, portão, ciclista, ônibus, fim.
+// v3: acrescenta praça, bagagem e guichê, sem retirar os episódios anteriores.
 export function validateSave(raw){
-  const defaults={version:SAVE_VERSION,step:0,hero:'joao',packing:[]};
-  if(!raw||typeof raw!=='object'||![1,SAVE_VERSION].includes(raw.version))return defaults;
-  const v=Number.isFinite(Number(raw.step))?Math.floor(Number(raw.step)):0;
-  // Migrar o save antigo sem remover rodoviária, ciclista e ônibus: 0..8 -> 0..9.
-  // O passo antigo 1 (rádio já ouvido) retoma no bilhete para confirmar o resultado.
-  const legacy=[0,2,3,4,5,6,7,8,9];
-  const step=raw.version===1?legacy[Math.max(0,Math.min(8,v))]:Math.max(0,Math.min(FINAL_STEP,v));
+  const fallback={version:SAVE_VERSION,step:0,hero:'joao',packing:[]};
+  if(!raw||typeof raw!=='object'||![1,2,SAVE_VERSION].includes(raw.version))return fallback;
+  const value=Number(raw.step);
+  const index=Number.isFinite(value)?Math.floor(value):0;
+  let step;
+  if(raw.version===1){
+    // Antes da ampliação, "cidade" era step 6 e "ônibus" step 7.
+    const v2=[0,2,3,4,5,6,7,8,9][Math.max(0,Math.min(8,index))];
+    step=[0,1,2,3,4,5,6,7,9,12][v2];
+  }else if(raw.version===2){
+    // Quem já enfrentou o ciclista continua pela recuperação da mala;
+    // quem estava chegando à cidade conhece a praça primeiro.
+    step=[0,1,2,3,4,5,6,7,9,12][Math.max(0,Math.min(9,index))];
+  }else step=Math.max(0,Math.min(FINAL_STEP,index));
   const hero=raw.hero==='crist'?'crist':'joao';
   const packing=step>4?PACKING_ITEMS.map(item=>item.id):normalizePacking(raw.packing);
   return {version:SAVE_VERSION,step,hero,packing};
