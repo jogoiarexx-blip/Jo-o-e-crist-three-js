@@ -83,8 +83,8 @@ function nearTarget(){
   return Math.hypot(actors[heroId].position.x-m.point.x,actors[heroId].position.z-m.point.z)<=m.radius?m:null;
 }
 function useTarget(){
-  if(dialogue){nextDialogue();return;}
   if(paused||!started)return;
+  if(dialogue){nextDialogue();return;}
   if(bikeEvent){dodge();return;}
   const target=nearTarget();
   if(!target){notify('Aproxime-se do marcador dourado para interagir.');return;}
@@ -127,7 +127,7 @@ function finishBike(){
   showDialogue(good?SCENES.bikeOK:SCENES.bikeHit,()=>{world.bike.visible=false;advanceTo(7);});
 }
 function togglePause(){
-  if(!started||ui.end.hidden===false||dialogue||bikeEvent)return;
+  if(!started||ui.end.hidden===false)return;
   paused=!paused;ui.pause.hidden=!paused;ui.mobile.hidden=paused||!mobile;
   ui.prompt.hidden=true;
   if(paused)held.clear();
@@ -135,6 +135,22 @@ function togglePause(){
 function restart(){
   try{localStorage.removeItem(SAVE_KEY);}catch{}
   location.reload();
+}
+function pollGamepadActions(){
+  const pad=navigator.getGamepads?.()[0];if(!pad)return;
+  const bindings=[[0,'act'],[1,'dodge'],[3,'switch'],[9,'pause']];
+  for(const [i,name] of bindings){
+    const down=!!pad.buttons[i]?.pressed;
+    if(down&&!prevPad[name]){
+      if(name==='pause')togglePause();
+      else if(!paused){
+        if(name==='act')useTarget();
+        if(name==='dodge')dodge();
+        if(name==='switch'&&!dialogue&&!bikeEvent)setHero(heroId==='joao'?'crist':'joao');
+      }
+    }
+    prevPad[name]=down;
+  }
 }
 function getInput(){
   let mx=0,my=0;
@@ -149,17 +165,6 @@ function getInput(){
     if(Math.abs(pad.axes[1]||0)>.18)my-=pad.axes[1];
     if(Math.abs(pad.axes[2]||0)>.20)yaw-=pad.axes[2]*.028;
     if(Math.abs(pad.axes[3]||0)>.20)pitch=clamp(pitch+pad.axes[3]*.012,.1,1.1);
-    const bindings=[[0,'act'],[1,'dodge'],[3,'switch'],[9,'pause']];
-    for(const [i,name] of bindings){
-      const down=!!pad.buttons[i]?.pressed;
-      if(down&&!prevPad[name]){
-        if(name==='act')useTarget();
-        if(name==='dodge')dodge();
-        if(name==='switch'&&started&&!dialogue&&!bikeEvent)setHero(heroId==='joao'?'crist':'joao');
-        if(name==='pause')togglePause();
-      }
-      prevPad[name]=down;
-    }
   }
   const len=Math.hypot(mx,my);
   if(len>1){mx/=len;my/=len;}
@@ -216,7 +221,9 @@ function updateCamera(dt,immediate=false){
 function update(dt){
   clockTime+=dt;
   if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)ui.toast.hidden=true;}
-  if(!started||paused)return;
+  if(!started)return;
+  pollGamepadActions();
+  if(paused)return;
   if(!dialogue&&!bikeEvent){
     const input=getInput();
     tempForward.set(Math.sin(yaw),0,Math.cos(yaw));
@@ -295,15 +302,15 @@ function bindInputs(){
     if(actionKeys.has(e.code))e.preventDefault();
     held.add(e.code);
     if(e.repeat)return;
-    if(e.code==='Escape'){if(dialogue){nextDialogue();return;}togglePause();return;}
+    if(e.code==='Escape'){togglePause();return;}
     if(!started||paused)return;
     if(e.code==='Tab'&&!dialogue&&!bikeEvent){setHero(heroId==='joao'?'crist':'joao');return;}
     if(e.code==='KeyE'||e.code==='Enter'){useTarget();return;}
     if(e.code==='Space'){dodge();}
   });
   window.addEventListener('keyup',e=>held.delete(e.code));
-  window.addEventListener('blur',()=>{held.clear();stick.x=stick.y=0;if(started&&!paused&&!dialogue&&!bikeEvent)togglePause();});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){held.clear();stick.x=stick.y=0;if(started&&!paused&&!dialogue&&!bikeEvent)togglePause();}});
+  window.addEventListener('blur',()=>{held.clear();stick.x=stick.y=0;if(started&&!paused)togglePause();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){held.clear();stick.x=stick.y=0;if(started&&!paused)togglePause();}});
   ui.dialog.addEventListener('click',nextDialogue);
   el('startBtn').addEventListener('click',start);
   el('pauseBtn').addEventListener('click',togglePause);
