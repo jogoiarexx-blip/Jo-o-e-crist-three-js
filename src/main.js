@@ -9,6 +9,7 @@ import {cameraRig} from './camera-logic.js';
 import {easeVelocity,moveWithCollision,joystickYaw} from './locomotion.js';
 import {CITY_CHOICES,findCityNpc,checkCityAnswer} from './city-state.js';
 import {BUS_START,BUS_SPAWN,BUS_CHOICES,BUS_SCENES,RHYTHM_SEQUENCE,RHYTHM_LABELS,RHYTHM_OPTIONS,checkBusAnswer,normalizeRhythmProgress,inputRhythm,findBusNpc} from './bus-state.js';
+import {AIRPORT_START,AIRPORT_SPAWN,AIRPORT_CHOICES,AIRPORT_SCENES,checkAirportAnswer,findAirportNpc,airportRushResult} from './airport-state.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
@@ -26,7 +27,7 @@ const DEBUG=new URLSearchParams(location.search).has('debug');
 let renderer,scene,camera,world,actors,heroId='joao',step=0,packing=[],started=false,paused=false;
 let yaw=1.12,pitch=.48,zoom=8.2,clockTime=0,lastFrame=0,toastTimer=0;
 let dialogue=null,bikeEvent=null,lotteryOpen=false,lotteryStage=0,lotteryAccepted=false,prevPad={};
-let choiceKind=null,choiceIndex=0,rhythmProgress=0;
+let choiceKind=null,choiceIndex=0,rhythmProgress=0,airportRush=null;
 function readRhythm(){try{return normalizeRhythmProgress(JSON.parse(localStorage.getItem(BUS_RHYTHM_KEY)||'0'));}catch{return 0;}}
 function saveRhythm(){try{localStorage.setItem(BUS_RHYTHM_KEY,JSON.stringify(rhythmProgress));}catch{notify('Não foi possível salvar o progresso da dança.');}}
 function puzzleDefinition(kind){
@@ -35,7 +36,7 @@ function puzzleDefinition(kind){
     text:'Sequência: PALMAS, PASSO, GIRO, PALMAS. Próximo movimento: '+RHYTHM_LABELS[RHYTHM_SEQUENCE[rhythmProgress]]+'.',
     options:RHYTHM_OPTIONS
   };
-  return CITY_CHOICES[kind]||BUS_CHOICES[kind]||null;
+  return CITY_CHOICES[kind]||BUS_CHOICES[kind]||AIRPORT_CHOICES[kind]||null;
 }
 let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null;
 let walking={x:0,z:0},lastStepSound=0;
@@ -97,7 +98,7 @@ function updateMission(){
     ui.objective.textContent='Arrume as malas — '+getPackingProgress(packing)+'/3';
     ui.hint.textContent=item?item.hint:'Itens reunidos! Troque para João e volte à mala dentro da casa.';
   }
-  el('chapter').textContent=step>=BUS_START?'CAPÍTULO 02 · EXCURSÃO ERRADA':step>=7?'CAPÍTULO 01 · RODOVIÁRIA':'CAPÍTULO 00 · FAZENDA';
+  el('chapter').textContent=step>=AIRPORT_START?'CAPÍTULO 03 · AEROPORTO':step>=BUS_START?'CAPÍTULO 02 · EXCURSÃO ERRADA':step>=7?'CAPÍTULO 01 · RODOVIÁRIA':'CAPÍTULO 00 · FAZENDA';
   if(step===17)ui.hint.textContent='Faça PALMAS, PASSO, GIRO, PALMAS. Ritmo: '+rhythmProgress+'/4. Vá ao centro do corredor.';
   ui.mission.hidden=step>=FINAL_STEP;
   world.setChapter?.(step);
@@ -105,7 +106,7 @@ function updateMission(){
   world.setPacked?.(packing);
   world.setSoundFixed?.(step>=17);
   world.setShowActive?.(step===17);
-  audio?.setBusActive?.(step>=BUS_START&&!paused);
+  audio?.setBusActive?.(step>=BUS_START&&step<AIRPORT_START&&!paused);
   if(step>6)world.setGateOpen?.(true);
   if(step>=FINAL_STEP)ui.prompt.hidden=true;
 }
@@ -120,7 +121,14 @@ function advanceTo(next){
   }
   if(step===17&&previous!==17){rhythmProgress=0;saveRhythm();}
   writeSave();updateMission();
-  if(step===BUS_START&&previous===11)snapCamera();
+  if(step===AIRPORT_START&&previous===18){
+    actors[heroId].position.set(AIRPORT_SPAWN.x,0,AIRPORT_SPAWN.z);
+    const other=heroId==='joao'?'crist':'joao';
+    actors[other].position.set(AIRPORT_SPAWN.x+.8,0,AIRPORT_SPAWN.z-1.2);
+    yaw=1.45;zoom=7.2;walking={x:0,z:0};
+    notify('A trupe deixou vocês no aeroporto! Encontrem o voo correto.');
+  }
+  if((step===BUS_START&&previous===11)||(step===AIRPORT_START&&previous===18))snapCamera();
   if(step===FINAL_STEP){ui.end.hidden=false;ui.hud.hidden=true;ui.mobile.hidden=true;ui.mission.hidden=true;started=false;}
 }
 function showDialogue(lines,onFinish){
@@ -156,7 +164,7 @@ function useTarget(){
   if(choiceKind)return;
   if(lotteryOpen){checkLottery();return;}
   if(dialogue){nextDialogue();return;}
-  if(bikeEvent){dodge();return;}
+  if(bikeEvent||airportRush){dodge();return;}
   const target=nearTarget();
   if(!target){
     const extra=step<=6?nearbyMemory(actors[heroId].position,[...memories]):null;
@@ -166,7 +174,11 @@ function useTarget(){
       showDialogue(extra.lines,()=>notify('Lembrança da Fazenda: '+memories.size+'/'+FARM_MEMORIES.length+'.'));
       return;
     }
-    if(step>=BUS_START&&step<FINAL_STEP){
+    if(step>=AIRPORT_START&&step<FINAL_STEP){
+      const npc=findAirportNpc(actors[heroId].position);
+      if(npc){showDialogue(npc.lines);return;}
+      notify('Siga o marcador do aeroporto ou converse com os atendentes.');
+    }else if(step>=BUS_START&&step<AIRPORT_START){
       const npc=findBusNpc(actors[heroId].position);
       if(npc){showDialogue(npc.lines);return;}
       notify('Siga o marcador do corredor ou converse com a trupe.');
@@ -177,6 +189,17 @@ function useTarget(){
     }else notify('Siga o marcador da missão ou explore a Fazenda em busca de histórias.');
     return;
   }
+  if(step===20&&heroId!=='crist'){notify('Crist deve ler a passagem e encontrar o check-in. Use TAB/TROCAR.');return;}
+  if(step===20){openCityChoice('checkin');return;}
+  if(step===21&&heroId!=='crist'){notify('Crist precisa procurar o passaporte de João. Use TAB/TROCAR.');return;}
+  if(step===21){openCityChoice('passport');return;}
+  if(step===22&&heroId!=='joao'){notify('João deve apresentar a bagagem e a farofa. Use TAB/TROCAR.');return;}
+  if(step===22){openCityChoice('farofa');return;}
+  if(step===23&&heroId!=='crist'){notify('Crist organiza os objetos para o detector. Use TAB/TROCAR.');return;}
+  if(step===23){openCityChoice('security');return;}
+  if(step===24&&heroId!=='crist'){notify('Crist precisa confirmar o novo portão. Use TAB/TROCAR.');return;}
+  if(step===24){openCityChoice('gate');return;}
+  if(step===25){startAirportRush();return;}
   if(step===14&&heroId!=='joao'){notify('João precisa procurar a caixa. Use TAB ou TROCAR.');return;}
   if(step===14){openCityChoice('case');return;}
   if(step===15&&heroId!=='crist'){notify('Crist deve identificar o cabo. Use TAB ou TROCAR.');return;}
@@ -214,7 +237,7 @@ function useTarget(){
     return;
   }
   const activeStep=step;
-  const scenes=[SCENES.wake,SCENES.radio,SCENES.ticket,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,SCENES.cityWelcome,null,null,null,SCENES.bus,BUS_SCENES.seat,BUS_SCENES.crew,null,null,null,null,BUS_SCENES.reveal];
+  const scenes=[SCENES.wake,SCENES.radio,SCENES.ticket,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,SCENES.cityWelcome,null,null,null,SCENES.bus,BUS_SCENES.seat,BUS_SCENES.crew,null,null,null,null,BUS_SCENES.reveal,AIRPORT_SCENES.welcome,null,null,null,null,null,null,AIRPORT_SCENES.board];
   const lines=scenes[activeStep];
   if(!lines)return;
   if(activeStep===2)winSound();else tone(600,.13,'triangle',.03);
@@ -238,7 +261,7 @@ function openCityChoice(kind){
   const puzzle=puzzleDefinition(kind);
   if(!puzzle||dialogue||lotteryOpen||choiceKind||paused)return;
   choiceKind=kind;choiceIndex=0;
-  ui.choice.querySelector('.eyebrow').textContent=kind==='rhythm'?'CAPÍTULO 02 · APRESENTAÇÃO':kind in BUS_CHOICES?'CAPÍTULO 02 · EXCURSÃO ERRADA':'CAPÍTULO 01 · RODOVIÁRIA';
+  ui.choice.querySelector('.eyebrow').textContent=kind==='rhythm'?'CAPÍTULO 02 · APRESENTAÇÃO':kind in AIRPORT_CHOICES?'CAPÍTULO 03 · AEROPORTO':kind in BUS_CHOICES?'CAPÍTULO 02 · EXCURSÃO ERRADA':'CAPÍTULO 01 · RODOVIÁRIA';
   ui.choiceHeading.textContent=puzzle.heading;
   ui.choiceText.textContent=puzzle.text;
   ui.choiceButtons.replaceChildren();
@@ -284,21 +307,26 @@ function submitCityChoice(optionId){
     }
     return;
   }
-  const correct=kind in CITY_CHOICES?checkCityAnswer(kind,optionId):checkBusAnswer(kind,optionId);
+  const correct=kind in CITY_CHOICES?checkCityAnswer(kind,optionId):kind in BUS_CHOICES?checkBusAnswer(kind,optionId):checkAirportAnswer(kind,optionId);
   choiceKind=null;ui.choice.hidden=true;ui.mobile.hidden=paused||!mobile;
   if(correct){
     tone(640,.2,'triangle',.033);
     const completed={
       bag:{lines:SCENES.bagSolved,next:10},route:{lines:SCENES.routeSolved,next:11},
       case:{lines:BUS_SCENES.case,next:15},inspect:{lines:BUS_SCENES.inspect,next:16},
-      connect:{lines:BUS_SCENES.connect,next:17}
+      connect:{lines:BUS_SCENES.connect,next:17},
+      checkin:{lines:AIRPORT_SCENES.checkin,next:21},passport:{lines:AIRPORT_SCENES.passport,next:22},
+      farofa:{lines:AIRPORT_SCENES.farofa,next:23},security:{lines:AIRPORT_SCENES.security,next:24},
+      gate:{lines:AIRPORT_SCENES.gate,next:25}
     };
     const event=completed[kind];
     if(event)showDialogue(event.lines,()=>advanceTo(event.next));
   }else{
     tone(194,.15,'square',.022);
     const wrong={bag:SCENES.bagWrong,route:SCENES.routeWrong,case:BUS_SCENES.caseWrong,
-      inspect:BUS_SCENES.inspectWrong,connect:BUS_SCENES.connectWrong};
+      inspect:BUS_SCENES.inspectWrong,connect:BUS_SCENES.connectWrong,
+      checkin:AIRPORT_SCENES.wrong,passport:AIRPORT_SCENES.wrong,farofa:AIRPORT_SCENES.wrong,
+      security:AIRPORT_SCENES.wrong,gate:AIRPORT_SCENES.wrong};
     if(wrong[kind])showDialogue(wrong[kind]);
   }
 }
@@ -322,14 +350,35 @@ function checkLottery(){
   ui.mobile.hidden=paused||!mobile;lotteryAccepted=true;
   useTarget();
 }
+function startAirportRush(){
+  if(airportRush||paused||dialogue)return;
+  airportRush={time:0,length:4.1,reacted:false};
+  ui.event.querySelector('.event-label').textContent='AEROPORTO · ESTEIRA ROLANTE';
+  ui.event.querySelector('.event-title').textContent='CUIDADO, JOÃO!';
+  ui.event.querySelector('.event-sub').textContent='Pressione ESPAÇO / ESQUIVAR / AÇÃO antes que ele tropece!';
+  ui.eventBar.style.transform='scaleX(1)';
+  ui.event.hidden=false;ui.prompt.hidden=true;
+  tone(750,.14,'square',.032);
+}
+function finishAirportRush(reacted){
+  if(!airportRush)return;
+  airportRush=null;ui.event.hidden=true;
+  const key=airportRushResult(reacted);
+  tone(reacted?710:220,.22,'triangle',.032);
+  showDialogue(AIRPORT_SCENES[key],()=>advanceTo(26));
+}
 function startBike(){
   if(bikeEvent||dialogue)return;
   bikeEvent={time:0,length:2.5,evaded:false,ended:false};
   world.bike.visible=true;world.bike.position.set(68,0,-18);
+  ui.event.querySelector('.event-label').textContent='CUIDADO!';
+  ui.event.querySelector('.event-title').textContent='UMA BICICLETA!';
+  ui.event.querySelector('.event-sub').textContent='Pressione ESPAÇO ou o botão ESQUIVAR!';
   ui.event.hidden=false;ui.prompt.hidden=true;
   tone(900,.15,'square',.045);tone(1000,.19,'square',.02);
 }
 function dodge(){
+  if(airportRush){finishAirportRush(true);return;}
   if(!bikeEvent||bikeEvent.ended)return;
   bikeEvent.evaded=true;finishBike();
 }
@@ -344,7 +393,7 @@ function finishBike(){
 function togglePause(){
   if(!started||ui.end.hidden===false)return;
   paused=!paused;ui.pause.hidden=!paused;ui.mobile.hidden=paused||!!choiceKind||lotteryOpen||!mobile;
-  audio?.setBusActive?.(step>=BUS_START&&!paused);
+  audio?.setBusActive?.(step>=BUS_START&&step<AIRPORT_START&&!paused);
   ui.prompt.hidden=true;
   if(paused){held.clear();walking={x:0,z:0};}
 }
@@ -462,8 +511,8 @@ function update(dt){
   if(!started)return;
   pollGamepadActions();
   if(paused)return;
-  if(step<=6||step>=BUS_START)audio?.update(dt);
-  if(!dialogue&&!bikeEvent&&!lotteryOpen&&!choiceKind){
+  if(step<=6||(step>=BUS_START&&step<AIRPORT_START))audio?.update(dt);
+  if(!dialogue&&!bikeEvent&&!airportRush&&!lotteryOpen&&!choiceKind){
     const input=getInput(dt);
     const heading=cameraRelativeMove(input.x,input.y,yaw);
     const targetSpeed=input.run?5.25:3.45;
@@ -496,6 +545,11 @@ function update(dt){
     world.markers.crist.holder.position.x=other.position.x;
     world.markers.crist.holder.position.z=other.position.z;
   }
+  if(airportRush){
+    airportRush.time+=dt;
+    ui.eventBar.style.transform='scaleX('+clamp(1-airportRush.time/airportRush.length,0,1)+')';
+    if(airportRush.time>=airportRush.length)finishAirportRush(false);
+  }
   if(bikeEvent){
     bikeEvent.time+=dt;
     const t=bikeEvent.time/bikeEvent.length;
@@ -515,10 +569,11 @@ function update(dt){
     const close=distance<=marker.radius;
     const extra=step<=6&&!close?nearbyMemory(pos,[...memories]):null;
     const cityNpc=step>=7&&step<BUS_START&&!close?findCityNpc(pos):null;
-    const busNpc=step>=BUS_START&&!close?findBusNpc(pos):null;
-    ui.prompt.hidden=(!close&&!extra&&!cityNpc&&!busNpc)||!!dialogue||!!bikeEvent||lotteryOpen||!!choiceKind;
+    const busNpc=step>=BUS_START&&step<AIRPORT_START&&!close?findBusNpc(pos):null;
+    const airportNpc=step>=AIRPORT_START&&!close?findAirportNpc(pos):null;
+    ui.prompt.hidden=(!close&&!extra&&!cityNpc&&!busNpc&&!airportNpc)||!!dialogue||!!bikeEvent||!!airportRush||lotteryOpen||!!choiceKind;
     ui.promptText.textContent=close?(step===8?'Atravesse com cuidado':marker.label):
-      extra?'Conhecer: '+extra.name:cityNpc?'Conversar: '+cityNpc.name:busNpc?'Conversar: '+busNpc.name:'Interagir';
+      extra?'Conhecer: '+extra.name:cityNpc?'Conversar: '+cityNpc.name:busNpc?'Conversar: '+busNpc.name:airportNpc?'Conversar: '+airportNpc.name:'Interagir';
   }else ui.prompt.hidden=true;
   updateCamera(dt);
 }
@@ -549,17 +604,20 @@ function start(){
     step===8?{x:62,z:19.2}:
     step===9?{x:79,z:2.7}:
     step===10?{x:71,z:2.0}:
-    step===11?{x:91,z:2.5}:{x:BUS_SPAWN.x,z:BUS_SPAWN.z};
+    step===11?{x:91,z:2.5}:
+    step>=AIRPORT_START?{x:AIRPORT_SPAWN.x,z:AIRPORT_SPAWN.z}:{x:BUS_SPAWN.x,z:BUS_SPAWN.z};
   actors.joao.position.set(spawn.x,0,spawn.z);
   actors.crist.position.set(spawn.x+(step>=BUS_START?.85:1.3),0,spawn.z+(step>=BUS_START?-1.2:.5));
   setHero(data.hero,true);started=true;paused=false;
-  if(step>=BUS_START){yaw=1.4;zoom=6.4;}
+  if(step>=AIRPORT_START){yaw=1.45;zoom=7.2;}
+  else if(step>=BUS_START){yaw=1.4;zoom=6.4;}
   walking={x:0,z:0};
   ui.start.hidden=true;ui.loading.hidden=true;ui.hud.hidden=false;ui.mobile.hidden=!mobile;
   updateMission();snapCamera();
   if(step===0)showDialogue(INTRO,()=>notify('Caminhe até o café dentro da casa para começar o dia.'));
   else if(step===7)notify('Bem-vindos à cidade! Procure o painel de informações da praça.');
   else if(step===BUS_START)notify('Vocês estão dentro da Excursão Estelar. Encontre um lugar no corredor.');
+  else if(step===AIRPORT_START)notify('Aeroporto Boa Sorte: confiram o painel e sigam até o check-in.');
   else notify('Progresso recuperado: '+getQuest(step).title);
   ui.soundBtn.textContent=soundEnabled?'♪':'×';
   ui.soundBtn.setAttribute('aria-label',soundEnabled?'Desativar som':'Ativar som');
@@ -583,7 +641,7 @@ function bindInputs(){
       return;
     }
     if(!started||paused)return;
-    if(e.code==='Tab'&&!dialogue&&!bikeEvent&&!lotteryOpen){setHero(heroId==='joao'?'crist':'joao');return;}
+    if(e.code==='Tab'&&!dialogue&&!bikeEvent&&!airportRush&&!lotteryOpen){setHero(heroId==='joao'?'crist':'joao');return;}
     if(e.code==='KeyE'||e.code==='Enter'){useTarget();return;}
     if(e.code==='Space'){dodge();}
   });
@@ -599,7 +657,7 @@ function bindInputs(){
   el('restartBtn').addEventListener('click',restart);
   el('replayBtn').addEventListener('click',restart);
   el('touchAction').addEventListener('pointerdown',e=>{e.preventDefault();useTarget();});
-  el('touchSwitch').addEventListener('pointerdown',e=>{e.preventDefault();if(started&&!dialogue&&!bikeEvent&&!choiceKind&&!lotteryOpen)setHero(heroId==='joao'?'crist':'joao');});
+  el('touchSwitch').addEventListener('pointerdown',e=>{e.preventDefault();if(started&&!dialogue&&!bikeEvent&&!airportRush&&!choiceKind&&!lotteryOpen)setHero(heroId==='joao'?'crist':'joao');});
   el('touchDodge').addEventListener('pointerdown',e=>{e.preventDefault();dodge();});
   let cameraPointer=null,lastX=0,lastY=0;
   ui.canvas.addEventListener('pointerdown',e=>{if(!started||paused||dialogue||lotteryOpen)return;cameraPointer=e.pointerId;lastX=e.clientX;lastY=e.clientY;ui.canvas.setPointerCapture(e.pointerId);});

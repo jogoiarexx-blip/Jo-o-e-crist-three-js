@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.3.0 — Capítulo 2: Excursão Errada jogável, Fazenda e Rodoviária preservadas).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Primeiro protótipo jogável (v0.4.0 — Capítulo 3: Aeroporto dos Perdidos acrescentado sem remover os anteriores).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -11,6 +11,22 @@ https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 **Celular:** analógico à esquerda, botões AÇÃO / TROCAR / ESQUIVAR, arrastar a tela gira a câmera.
 
 **Gamepad:** analógico esquerdo move, direito gira a câmera, A interage, B esquiva, Y troca personagem, Start pausa (diálogos e bicicleta estão acessíveis por teclado/touch; integração completa do gamepad seguirá).
+
+## Capítulo 3 — Aeroporto dos Perdidos (v0.4.0)
+
+A ampliação autorizada pelo usuário acrescenta **oito objetivos de aeroporto** mantendo intactos a Fazenda, a Rodoviária, a Excursão Errada, as interações e o progresso anterior:
+
+- Saguão separado com painéis, check-in, Achados e Perdidos, despacho de bagagens, detector, painel de portão, esteira rolante e acesso ao avião.
+- Crist lê os dados do voo BS408, recupera o passaporte, prepara a inspeção e identifica o novo portão C7.
+- João lida com a farofa e com as confusões da bagagem.
+- Cinco pequenos desafios com pistas no cenário, três alternativas por vez, respostas recuperáveis sem game over.
+- Correria curta com reação de desvio no teclado, toque e gamepad; falhar gera tropeço cômico e a história continua.
+- Três atendentes opcionais (Nina, Léo e Mara) e novo encerramento com embarque.
+- Saves das versões 1–4 migrados para 5; o fim anterior inicia o aeroporto, sem repetir o ônibus.
+- Colisões do aeroporto ativadas somente no Capítulo 3, separadas das do ônibus.
+- [MD do aeroporto, testes e pendências](FASE-04-AEROPORTO.md).
+
+**Status dos testes:** sintaxe, roteiro, colisões, respostas e saves verificáveis automaticamente. Não substituem uma partida completa em desktop e Android.
 
 ## Capítulo 2 — A Excursão Errada (v0.3.0)
 
@@ -134,4 +150,4 @@ A prioridade atual, por solicitação explícita, é **Capítulo 1 — A Rodovi�
 
 ## Próximas prioridades
 
-**Validar em jogo a Excursão Errada de ponta a ponta**, incluindo câmera, colisões, diálogo, troca João/Crist, minijogo, touch, gamepad e FPS no Android. A seguir, depois de validar a versão 0.3.0, começar o Aeroporto dos Perdidos. Preservar sempre a Fazenda, a Rodoviária e a edição 2D.
+**Validar em jogo o Aeroporto dos Perdidos e as transições de capítulos**, inclusive câmera, portões, interações, saves, toque e gamepad. Depois ampliar a Route 66 conforme o MD original, sem eliminar conteúdo existente.

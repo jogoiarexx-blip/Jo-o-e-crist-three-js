@@ -6,12 +6,12 @@ import {isBlocked,canReachInteraction} from '../src/collision.js';
 
 test('capítulo 2 soma sete etapas, sem remover Fazenda, Rodoviária ou bicicleta',()=>{
   assert.equal(BUS_START,12);assert.equal(BUS_END,18);
-  assert.equal(SAVE_VERSION,4);assert.equal(FINAL_STEP,19);assert.equal(QUESTS.length,20);
+  assert.equal(SAVE_VERSION,5);assert.equal(FINAL_STEP,27);assert.equal(QUESTS.length,28);
   assert.deepEqual(QUESTS.slice(0,12).map(q=>q.id),[
     'wake','radio','ticket','crist','suitcase','pantera','gate','cityWelcome','crossing','cityBag','cityClerk','bus'
   ]);
   assert.deepEqual(BUS_QUESTS.map(q=>q.id),['busSeat','busCrew','busCase','busInspect','busConnect','busDance','busReveal']);
-  assert.equal(getQuest(19).id,'done');
+  assert.equal(getQuest(19).id,'airWelcome');
 });
 test('salão do ônibus é fechado, corredor livre e alvos alcançáveis',()=>{
   const solids=makeBusRoomColliders();

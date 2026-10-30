@@ -1,6 +1,7 @@
 # Capítulo 2 — A Excursão Errada
 
 **Implementação inicial:** v0.3.0 · Three.js · independente da Fazenda e da Rodoviária.
+**Continuação:** a v0.4.0 acrescenta o Aeroporto dos Perdidos; detalhes em `FASE-04-AEROPORTO.md`. Nenhuma missão do ônibus foi removida.
 **Direção narrativa:** \`JOAO_E_CRIST_PROPOSTA_3D.md\`, capítulo 2 e exemplo do ônibus errado.
 **Regra central:** ampliar a história sem remover personagens, mapas, missões, partidas e eventos anteriores.
 
