@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {QUESTS,SCENES,INTRO,getQuest,validateSave,PACKING_ITEMS,normalizePacking,nextPackingTarget,getPackingProgress} from '../src/story.js';
+import {QUESTS,SCENES,INTRO,getQuest,validateSave,PACKING_ITEMS,normalizePacking,nextPackingTarget,getPackingProgress,LOTTERY_NUMBERS} from '../src/story.js';
 
 test('campanha tem 8 objetivos e final',()=>{
   assert.equal(QUESTS.length,9);
@@ -39,4 +39,10 @@ test('save aceita somente objetos válidos e preserva coleta parcial',()=>{
   assert.deepEqual(validateSave({version:1,step:2,packing:['farofa']}).packing,['farofa']);
   assert.deepEqual(validateSave({version:1,step:0,packing:'documents'}).packing,[]);
   assert.ok(SCENES.documents.length>0&&SCENES.clothes.length>0&&SCENES.farofa.length>0);
+});
+
+test('sorteio fictício tem seis dezenas válidas e únicas',()=>{
+  assert.equal(LOTTERY_NUMBERS.length,6);
+  assert.equal(new Set(LOTTERY_NUMBERS).size,6);
+  assert.ok(LOTTERY_NUMBERS.every(n=>Number.isInteger(n)&&n>=1&&n<=60));
 });

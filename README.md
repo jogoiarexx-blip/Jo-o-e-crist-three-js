@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.1.1 — polimento da Fase 1).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Primeiro protótipo jogável (v0.1.2 — cenários, sorteio e câmera na Fase 1).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -19,7 +19,7 @@ https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 3. Companheiro que acompanha o protagonista e desvia dos edifícios estáticos.
 4. Roteiro da **loteria**, bilhete, rádio, conversa, **preparação real das malas (documentos, roupas e farofa)**, despedida de Pantera, porteira, rua e quase atropelamento de bicicleta.
 5. Embarque no ônibus errado, encerramento do prólogo e gancho para o capítulo da excursão.
-6. Saves locais isolados da edição 2D (chave joaoCrist3DSave_v1), incluindo os itens já guardados na mala; pausa, touch, gamepad básico e modo de diagnóstico ?debug=1.
+6. Conferência visual do bilhete e resultado de loteria fictícia; cantos de pássaros procedurais e botão de som. Saves locais isolados da edição 2D (chave joaoCrist3DSave_v1), incluindo os itens já guardados na mala; pausa, touch, gamepad básico e modo de diagnóstico ?debug=1.
 7. Publicação estática via GitHub Pages e workflow automatizado.
 
 **Ainda não incluído:** personagens GLB com rig, animações Motion Capture, áudio musical, interiores completos, boate jogável, Las Vegas completa, colisão avançada, coop local, tradução, QA em Android real. As atuais figuras procedurais são placeholders de produção, **não** ativos definitivos.
@@ -47,6 +47,15 @@ O workflow publica o conteúdo da raiz quando houver push na branch main. Se est
 ## Desenvolvimento fase a fase
 A prioridade atual é **Fase 1 — Fazenda**. Não estamos expandindo as demais áreas até fechar um checklist real de jogabilidade: navegação, interações, narrativa, câmera, colisões, controles e testes manuais em Android/desktop. A cidade e o ônibus continuam no protótipo, mas serão refinados em etapas posteriores.
 
+### Evolução 0.1.2: mais conteúdo só na Fazenda
+- Cena visual da loteria: conferir as seis dezenas do bilhete, revelar o resultado, comemorar.
+- Áudio rural original sintetizado por WebAudio, ativável/desativável, sem autoplay e sem arquivos pesados.
+- Fazenda com poço, galinhas animadas, canteiro instanciado, fardos e apoio para o rádio.
+- Câmera agora leva em conta a altura dos obstáculos e aproxima antes de atravessar construções.
+- Colisão para cercas, mesa, poço e mala; testes automatizados de movimento e altura.
+- Fase 2 e seguintes **sem ampliação**.
+- **Não foi realizado teste gráfico manual em celular ou navegador nesta rodada.**
+
 ### Evolução 0.1.1: preparação da viagem
 - Documentos, roupa e farofa são objetos reais do cenário; cada um tem uma interação contextual e um pequeno diálogo.
 - O jogador só pode fechar a mala quando os três itens foram guardados.
@@ -58,4 +67,4 @@ A prioridade atual é **Fase 1 — Fazenda**. Não estamos expandindo as demais 
 
 ## Próximas prioridades
 
-Substituir os personagens procedurais pelos modelos GLB rigados (idle/walk/run/talk); adicionar ponte GLB sem quebrar o placeholder; ampliar a rodoviária, implementando o ônibus de artistas, sua tripulação e o primeiro desafio dentro do veículo; testar mobile, melhorar câmera/colisões e inserir trilha sonora original.
+**Concluir a Fazenda antes de avançar.** Substituir os personagens procedurais pelos modelos GLB rigados (idle/walk/run/talk); adicionar ponte GLB sem quebrar o placeholder; ampliar a rodoviária, implementando o ônibus de artistas, sua tripulação e o primeiro desafio dentro do veículo; testar mobile, melhorar câmera/colisões e inserir trilha sonora original.

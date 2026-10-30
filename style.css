@@ -13,3 +13,18 @@
 @media(hover:none),(pointer:coarse){.dialog{bottom:178px}.prompt{bottom:201px}.mission{top:76px;width:min(310px,calc(100vw - 28px))}.brand small{display:none}.brand strong{font-size:18px}.chapter strong{font-size:16px}.hud{top:max(8px,env(safe-area-inset-top))}.mission-title{font-size:21px}.mission-hint{font-size:11px}.mobile-controls{display:flex}}
 @media(max-width:600px){.start-content h1{font-size:66px}.tagline{font-size:28px}.synopsis{font-size:14px}.mission{padding:10px 13px;max-width:245px}.mission-title{font-size:18px;margin:4px 0}.mission-hint{font-size:10px}.chapter{margin-left:auto}.dialog{bottom:170px;padding:11px 14px}.dialog-name{font-size:19px}.dialog-text{font-size:13px;min-height:48px}.dialog-footer{font-size:8px}.brand-mark{width:34px;height:34px;font-size:16px}.brand strong{font-size:16px}.chapter span{font-size:8px}}
 @media(max-height:500px){.mission{top:56px}.dialog{bottom:10px}.mobile-controls{bottom:8px}.joystick{width:97px;height:97px}.mobile-actions button{min-height:40px}.touch-main{min-height:88px!important}.start-content h1{font-size:65px}.start-content .synopsis{font-size:12px;margin-bottom:12px}.start-content .control-note{margin-top:12px}}
+
+/* Fase 01: conferência do prêmio sem depender de imagens externas. */
+.lottery-panel{position:absolute;inset:0;background:#101b1bc9;display:grid;place-items:center;z-index:8;padding:20px;backdrop-filter:blur(3px)}
+.lottery-paper{width:min(540px,96vw);max-height:94dvh;overflow:auto;background:linear-gradient(155deg,#f3e4bf,#e3cda4);color:#29342f;padding:clamp(22px,4vw,39px);border:6px solid #fff4d4;box-shadow:0 20px 65px #0009;text-align:center}
+.lottery-paper .eyebrow{font-size:11px;color:#836331;letter-spacing:.19em}
+.lottery-paper h2{font:900 clamp(32px,7vw,51px)/1 'Barlow Condensed',sans-serif;margin:12px 0;color:#273a35}
+.lottery-paper p{line-height:1.5;font-size:14px}
+.lottery-label{font-size:11px;letter-spacing:.12em;font-weight:900;margin:21px 0 10px;color:#705637}
+.lottery-numbers{display:flex;align-items:center;justify-content:center;gap:clamp(4px,1vw,11px);flex-wrap:wrap}
+.lottery-numbers span{width:clamp(37px,8.5vw,56px);height:clamp(37px,8.5vw,56px);border-radius:50%;display:grid;place-items:center;background:#324e40;color:#fff8df;font:800 clamp(17px,4vw,25px) 'Barlow Condensed';box-shadow:0 3px 0 #14251e55}
+#lotteryResult span{background:#b15f38}
+.lottery-win{color:#256442;font:900 21px/1.1 'Barlow Condensed',sans-serif!important;letter-spacing:.04em;margin:18px 0!important}
+.lottery-paper .primary{margin-top:23px;box-shadow:0 5px 0 #977139}
+.lottery-foot{margin-top:16px;font-size:10px;font-weight:800;letter-spacing:.08em;color:#806d52}
+@media(max-width:600px){.hud{gap:8px}.hud .icon-button{width:37px;height:37px;flex-shrink:0}.lottery-paper{padding:19px}.lottery-paper .primary{font-size:17px}.lottery-paper h2{font-size:37px}}

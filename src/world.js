@@ -37,13 +37,13 @@ function house(scene,colliders){
   for(const x of [-7,7])for(const z of [4.8,9.5])cyl(h,.19,.24,3.1,wood,x,1.7,z);
   box(h,17,.22,5.2,mat('#8b6b48'),0,3.24,7.2);
   sign(h,'SÍTIO BOA SORTE',0,5.0,4.65,5.6,.73,'#67412b');
-  colliders.push({x1:-22.6,x2:-7.4,z1:-17.6,z2:-8.2});
+  colliders.push({x1:-22.6,x2:-7.4,z1:-17.6,z2:-8.2,height:9.5});
 }
 function barn(scene,colliders){
   const g=new THREE.Group();g.position.set(-30,0,-15);scene.add(g);
   box(g,12,6,9,red,0,3,0);const r=box(g,12.8,.55,11,mat('#634a3d'),0,7.1,0);r.rotation.z=.22;
   box(g,4.2,4.8,.2,wood,0,2.4,4.6);sign(g,'GALPÃO',0,5.4,4.8,4,1,'#614934');
-  colliders.push({x1:-36.4,x2:-23.6,z1:-19.5,z2:-10.3});
+  colliders.push({x1:-36.4,x2:-23.6,z1:-19.5,z2:-10.3,height:8});
 }
 function tree(scene,x,z,k=0,scale=1){
   const group=new THREE.Group();group.position.set(x,0,z);group.scale.setScalar(scale);scene.add(group);
@@ -74,7 +74,7 @@ function townBuilding(scene,colliders,x,z,w,d,c,name){
   box(g,2.5,3.1,.2,mat('#4e5246'),0,1.55,face);
   for(const xx of [-w*.3,w*.3])box(g,2.15,1.8,.25,mat('#9ac2c3'),xx,4.2,face);
   sign(g,name,0,6.85,face,Math.max(3.5,w*.75),.72,'#37433d');
-  colliders.push({x1:x-w/2-.2,x2:x+w/2+.2,z1:z-d/2-.2,z2:z+d/2+.2});
+  colliders.push({x1:x-w/2-.2,x2:x+w/2+.2,z1:z-d/2-.2,z2:z+d/2+.2,height:6.8});
 }
 function makeBus(scene){
   const bus=new THREE.Group();bus.position.set(101,0,6);scene.add(bus);
@@ -123,6 +123,56 @@ function dog(scene){
   const tail=cyl(g,.13,.09,.65,fur,0,.94,-.8);tail.rotation.x=1.0;
   g.userData.tail=tail;return g;
 }
+function farmDetails(scene,colliders){
+  const hay=mat('#c4a55c'),stone=mat('#a5a496'),soil=mat('#8e734f');
+  // Poço rústico com água, telhado e manivela.
+  const well=new THREE.Group();well.position.set(17,0,-13);scene.add(well);
+  cyl(well,1.28,1.34,.95,stone,0,.49,0,11);
+  cyl(well,.95,.95,.08,mat('#547f86'),0,.96,0,11);
+  for(const x of [-1.2,1.2])box(well,.18,3,.18,wood,x,1.64,0);
+  const roof=box(well,3.7,.23,2.7,mat('#826041'),0,3.12,0);roof.rotation.z=-.09;
+  cyl(well,.15,.15,2.8,wood,0,2.2,0,7).rotation.z=Math.PI/2;
+  box(well,.4,.5,.4,mat('#77583f'),.2,1.43,0);
+  colliders.push({x1:15.6,x2:18.4,z1:-14.4,z2:-11.6,height:3.4});
+
+  // Fardos e canteiro enriquecem a fazenda sem atrapalhar os objetivos.
+  for(const [x,z,rot] of [[-34,2,.14],[-36,3,-.11],[-33.8,3.4,0]]){
+    const bale=box(scene,1.75,.95,1.08,hay,x,.5,z);bale.rotation.y=rot;
+    colliders.push({x1:x-.95,x2:x+.95,z1:z-.6,z2:z+.6,height:1.1});
+  }
+  // O rádio fica sobre uma mesinha em vez de flutuar.
+  box(scene,1.8,.14,1.1,wood,-10.5,.52,1);
+  for(const x of [-11.2,-9.8])for(const z of [.6,1.4])box(scene,.14,.47,.14,wood,x,.24,z);
+  colliders.push({x1:-11.5,x2:-9.5,z1:.4,z2:1.6,height:1.1});
+  box(scene,9,.08,4.5,soil,-17,.09,19);
+  const geometry=new THREE.ConeGeometry(.23,.7,5);
+  const patch=new THREE.InstancedMesh(geometry,mat('#58834b'),32);
+  const dummy=new THREE.Object3D();
+  for(let i=0;i<32;i++){
+    const row=Math.floor(i/8),col=i%8;
+    dummy.position.set(-20.8+col*1.1,.49,17.55+row*.92);
+    dummy.rotation.y=(i%4)*.6;dummy.updateMatrix();patch.setMatrixAt(i,dummy.matrix);
+  }
+  patch.instanceMatrix.needsUpdate=true;scene.add(patch);
+  for(const z of [16.6,21.3])box(scene,9,.24,.16,wood,-17,.38,z);
+  // Três galinhas procedurais animadas.
+  const chickens=[];
+  for(const [x,z,heading] of [[3,-15,.5],[7,-17,-.6],[10,-14,1.4]]){
+    const hen=new THREE.Group();hen.position.set(x,0,z);hen.rotation.y=heading;scene.add(hen);
+    const feathers=mat('#e5d6ba'),beak=mat('#cf623b');
+    const body=ball(hen,.48,feathers,0,.67,0,1);body.scale.z=1.2;
+    ball(hen,.25,feathers,0,1.02,.35,1);
+    ball(hen,.095,beak,0,.94,.64,0);
+    for(const side of [-.22,.22]){
+      cyl(hen,.045,.055,.35,mat('#b78b55'),side,.2,.05,6);
+      ball(hen,.055,mat('#332c26'),side*.73,1.09,.52,0);
+    }
+    const crest=ball(hen,.14,beak,0,1.29,.29,0);crest.scale.y=.6;
+    chickens.push(hen);
+  }
+  return chickens;
+}
+
 export function buildWorld(scene){
   scene.background=new THREE.Color('#9ec6be');
   scene.fog=new THREE.Fog('#9ec6be',45,140);
@@ -141,6 +191,9 @@ export function buildWorld(scene){
   box(scene,29,.12,3.4,mat('#a8a9a2'),91,.1,1.0);
   const colliders=[];
   house(scene,colliders);barn(scene,colliders);fence(scene,-40,11,-25);fence(scene,-40,-8,24);
+  const chickens=farmDetails(scene,colliders);
+  colliders.push({x1:-40.4,x2:11.2,z1:-25.25,z2:-24.75,height:1.9});
+  colliders.push({x1:-40.4,x2:-8.0,z1:23.75,z2:24.25,height:1.9});
   for(let i=0;i<20;i++)box(scene,1.6,.1,5,mat(i%2?'#8d9f51':'#7c954b'),-40+i*1.6,.08,-33);
   const gtree=[[6,-19],[16,-14],[21,26],[8,29],[-26,18],[-39,12],[-12,22],[37,-20],[43,27],[48,28],[53,28],[66,30],[82,28],[100,25],[118,-13],[121,28],[108,-26],[0,-34],[28,-29],[36,35],[7,38],[-33,-37]];
   gtree.forEach((t,i)=>tree(scene,t[0],t[1],i,.85+(i%4)*.16));
@@ -165,12 +218,14 @@ export function buildWorld(scene){
   const bus=makeBus(scene);const pantera=dog(scene);const bike=makeBike(scene);
   // Farm props, all targets remain visible but glow only when active.
   const table=box(scene,2.6,.18,1.3,wood,-4.6,1.03,2.3);
+  colliders.push({x1:-5.95,x2:-3.25,z1:1.6,z2:3.0,height:1.2});
   for(const x of [-5.55,-3.65])for(const z of [1.85,2.75])box(scene,.13,1,.13,wood,x,.52,z);
   const ticket=box(scene,.8,.02,.42,mat('#f8df97'),-4.6,1.16,2.3);
   const radio=box(scene,1.25,.72,.55,dark,-10.5,.95,1.0);
   box(scene,.52,.3,.09,mat('#bb9d6e'),-10.5,1.05,1.3);
   cyl(scene,.05,.05,.62,dark,-10.1,1.57,1.0,6);
   const suitcase=box(scene,1.24,.72,.64,mat('#a36b42'),-12.5,.42,3.6);
+  colliders.push({x1:-13.4,x2:-11.9,z1:3.13,z2:4.1,height:.85});
   box(scene,.55,.17,.15,mat('#d9c4a4'),-12.5,.89,3.6);
   box(scene,.8,.6,.52,mat('#845837'),-13.3,.31,3.9);
   box(scene,2.1,1,.85,mat('#bc946d'),4.5,.53,-9);
@@ -226,7 +281,7 @@ export function buildWorld(scene){
     }scene.add(g);clouds.push(g);
   }
   let panteraExcitedUntil=0;
-  return {markers,colliders,bus,bike,pantera,clouds,sun,radio,ticket,suitcase,packingProps,
+  return {markers,colliders,bus,bike,pantera,clouds,sun,radio,ticket,suitcase,packingProps,chickens,
     setTarget(id){for(const o of Object.values(markers))o.holder.visible=o.id===id;},
     setPacked(ids){
       const done=new Set(Array.isArray(ids)?ids:[]);
@@ -235,6 +290,7 @@ export function buildWorld(scene){
     reactPantera(time){panteraExcitedUntil=time+5;},
     update(time,target){for(const o of Object.values(markers))if(o.holder.visible){o.beacon.position.y=2.3+Math.sin(time*2.3)*.25;o.ring.rotation.z=time*.25;}
       pantera.userData.tail.rotation.z=Math.sin(time*(time<panteraExcitedUntil?18:7))*(time<panteraExcitedUntil?.75:.35);
+      chickens.forEach((hen,i)=>{hen.position.y=Math.sin(time*3.3+i)*.022;hen.rotation.x=Math.sin(time*2.5+i)*.05;});
       bus.rotation.z=Math.sin(time*2)*.0015;
       for(let i=0;i<clouds.length;i++)clouds[i].position.x+=.0002*(i%3+1);
       sun.position.set(target.x-23,40,target.z+18);sun.target.position.set(target.x,0,target.z);sun.target.updateMatrixWorld();

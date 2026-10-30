@@ -19,6 +19,7 @@
     <header id="hud" class="hud" hidden>
       <div class="brand"><span class="brand-mark">J&C</span><span><strong>JOÃO & CRIST</strong><small>A VIAGEM MAIS MALUCA DO MUNDO</small></span></div>
       <div class="chapter"><span id="chapter">CAPÍTULO 01</span><strong id="hero">JOÃO</strong></div>
+      <button id="soundBtn" class="icon-button" type="button" aria-label="Desativar som" aria-pressed="true">♪</button>
       <button id="pauseBtn" class="icon-button" type="button" aria-label="Pausar jogo">II</button>
     </header>
     <section id="mission" class="mission" hidden aria-live="polite">
@@ -29,6 +30,22 @@
     </section>
     <div id="prompt" class="prompt" hidden><span class="key">E</span><span id="promptText">Interagir</span></div>
     <div id="toast" class="toast" hidden aria-live="polite"></div>
+    <section id="lotteryPanel" class="lottery-panel" role="dialog" aria-modal="true" aria-labelledby="lotteryHeading" hidden>
+      <div class="lottery-paper">
+        <div class="eyebrow">RÁDIO BOA SORTE · SORTEIO FICTÍCIO</div>
+        <h2 id="lotteryHeading">O bilhete do João</h2>
+        <p>O sonho de Las Vegas começa com seis números rabiscados no papel.</p>
+        <div class="lottery-label">NÚMEROS DO BILHETE</div>
+        <div class="lottery-numbers" id="lotteryTicket"></div>
+        <div id="lotteryReveal" hidden>
+          <div class="lottery-label">RESULTADO ANUNCIADO NO RÁDIO</div>
+          <div class="lottery-numbers" id="lotteryResult"></div>
+          <p class="lottery-win" role="status">OS SEIS NÚMEROS BATERAM! VOCÊS GANHARAM!</p>
+        </div>
+        <button type="button" class="primary" id="lotteryButton">CONFERIR RESULTADO</button>
+        <div class="lottery-foot">E / ENTER / A para confirmar</div>
+      </div>
+    </section>
 
     <section id="dialog" class="dialog" hidden aria-live="polite">
       <div class="dialog-name" id="dialogSpeaker">JOÃO</div>
@@ -52,7 +69,7 @@
         <p class="synopsis">Dois velhinhos do interior. Um bilhete premiado. O sonho de conhecer Las Vegas. O que poderia dar errado?</p>
         <button class="primary" id="startBtn" type="button">COMEÇAR A AVENTURA <span>→</span></button>
         <p class="control-note">WASD mover • Mouse câmera • E interagir • TAB trocar personagem • ESPAÇO esquivar</p>
-        <p class="edition">PRÓLOGO JOGÁVEL · THREE.JS · v0.1.0</p>
+        <p class="edition">FASE 01 EM DESENVOLVIMENTO · THREE.JS · v0.1.2</p>
       </div>
     </section>
 

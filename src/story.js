@@ -9,6 +9,8 @@ export const QUESTS=[
   {id:'bus',title:'Embarque na excursão para Vegas',hint:'O ônibus roxo está estacionado ao lado da rodoviária.'},
   {id:'done',title:'Prólogo concluído!',hint:'A viagem acabou de começar...'}
 ];
+// Resultado inteiramente fictício, usado só no roteiro.
+export const LOTTERY_NUMBERS=Object.freeze([3,11,18,27,42,56]);
 export const INTRO=[
   ['NARRADOR','No interior, onde o café é forte e as notícias chegam pelo rádio, dois amigos vivem tranquilamente na fazenda.'],
   ['CRIST','Ô João! Cadê aquele bilhete da loteria que você comprou?'],

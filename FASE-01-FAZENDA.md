@@ -1,5 +1,5 @@
 # Fase 01 — A Fazenda: plano de acabamento
-**Estado da construção:** v0.1.1 — primeiro reforço de jogabilidade; **não considerada finalizada**.
+**Estado da construção:** v0.1.2 — ambientação e confiabilidade da Fazenda; **não considerada finalizada**.
 
 ## Premissa
 João e Crist são dois amigos idosos que moram no interior. Após achar o bilhete e ouvir o resultado no rádio, eles descobrem que ficaram ricos e começam a preparar uma viagem para conhecer Las Vegas.
@@ -18,6 +18,10 @@ João e Crist são dois amigos idosos que moram no interior. Após achar o bilhe
 - [x] Persistência de itens coletados em save v1; recuperação de saves legados que já concluíram a mala.
 - [x] Reação animada da Pantera na despedida.
 - [x] Novos testes automatizados de ordem, validação e migração de saves.
+- [x] Apresentação visual dos seis números do bilhete e conferência antes de comemorar o sorteio fictício.
+- [x] Pássaros com síntese WebAudio, com opção para desligar o som.
+- [x] Galinhas, poço, horta, fardos e rádio apoiado em mesa para tornar a Fazenda menos vazia.
+- [x] Colisões por altura de obstáculos, sem atravessar cercas ou a mesa; testes unitários das regras.
 - [x] **Nenhuma expansão da rodoviária, ônibus ou Vegas.**
 
 ## Pendente antes de marcar a Fazenda como pronta
@@ -28,8 +32,10 @@ João e Crist são dois amigos idosos que moram no interior. Após achar o bilhe
 - [ ] Recarregar a página após coletar apenas 1 item e depois 2 itens: confirmar que não reaparecem.
 - [ ] Melhorar os modelos dos personagens; substituir os provisórios por GLBs com rig quando houver assets apropriados.
 - [ ] Adicionar expressões faciais/gestos; trabalhar caracterização e ritmo dos diálogos.
-- [ ] Adicionar som ambiente rural e feedback sonoro com controle de volume.
-- [ ] Fazer a conferência da loteria ser mais visual e clara que apenas um diálogo.
+- [x] Adicionar pássaros sintetizados e alternância de som ligado/desligado (sem controle de volume contínuo ainda).
+- [ ] Música ambiente rural original e controle gradual de volume.
+- [x] Fazer a conferência da loteria ser mais visual e clara que apenas um diálogo.
+- [ ] Validar o fluxo visual e navegação por teclado/toque da conferência.
 - [ ] Medir FPS e frame times em hardware real e corrigir eventuais travamentos.
 - [ ] Obter avaliação da narrativa e da diversão da Fazenda antes de avançar.
 

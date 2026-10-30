@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import {buildWorld} from './world.js';
+import {createRuralAudio} from './audio.js';
+import {isBlocked} from './collision.js';
 import {createElder,animateElder} from './characters.js';
-import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking} from './story.js';
+import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS} from './story.js';
 
 const el=id=>document.getElementById(id);
 const ui={canvas:el('game'),loading:el('loading'),hud:el('hud'),mission:el('mission'),objective:el('objective'),
@@ -9,13 +11,16 @@ const ui={canvas:el('game'),loading:el('loading'),hud:el('hud'),mission:el('miss
   promptText:el('promptText'),toast:el('toast'),dialog:el('dialog'),speaker:el('dialogSpeaker'),
   dialogText:el('dialogText'),dialogCount:el('dialogCount'),start:el('startScreen'),
   pause:el('pauseScreen'),end:el('endScreen'),mobile:el('mobileControls'),
-  event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText')};
+  event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText'),lottery:el('lotteryPanel'),lotteryButton:el('lotteryButton'),lotteryReveal:el('lotteryReveal'),soundBtn:el('soundBtn')};
 const SAVE_KEY='joaoCrist3DSave_v1';
 const DEBUG=new URLSearchParams(location.search).has('debug');
 let renderer,scene,camera,world,actors,heroId='joao',step=0,packing=[],started=false,paused=false;
 let yaw=1.12,pitch=.48,zoom=8.2,clockTime=0,lastFrame=0,toastTimer=0;
-let dialogue=null,bikeEvent=null,actionHeld=false,prevPad={};
+let dialogue=null,bikeEvent=null,lotteryOpen=false,lotteryStage=0,lotteryAccepted=false,prevPad={};
 let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null;
+const SOUND_KEY='joaoCrist3DSound_v1';
+let soundEnabled=true;
+try{soundEnabled=localStorage.getItem(SOUND_KEY)!=='off';}catch{}
 const held=new Set(),stick={x:0,y:0,id:null};
 const clamp=(a,min,max)=>Math.max(min,Math.min(max,a));
 const smooth=(current,target,dt,k)=>current+(target-current)*(1-Math.exp(-k*dt));
@@ -32,17 +37,15 @@ function writeSave(){
 function notify(text){
   ui.toast.textContent=text;ui.toast.hidden=false;toastTimer=3.4;
 }
-function createAudio(){if(audio)return;try{audio=new (window.AudioContext||window.webkitAudioContext)();}catch{}}
-function tone(freq=440,duration=.14,type='sine',volume=.04){
-  if(!audio)return;
-  try{if(audio.state==='suspended')audio.resume();
-    const osc=audio.createOscillator(),gain=audio.createGain(),t=audio.currentTime;
-    osc.type=type;osc.frequency.setValueAtTime(freq,t);
-    gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime(volume,t+.018);
-    gain.gain.exponentialRampToValueAtTime(.0001,t+duration);
-    osc.connect(gain);gain.connect(audio.destination);osc.start(t);osc.stop(t+duration+.02);
-  }catch{}
+function createAudio(){if(!audio)audio=createRuralAudio();audio.resume();audio.setEnabled(soundEnabled);}
+function toggleSound(){
+  soundEnabled=!soundEnabled;audio?.setEnabled(soundEnabled);
+  ui.soundBtn.textContent=soundEnabled?'♪':'×';
+  ui.soundBtn.setAttribute('aria-label',soundEnabled?'Desativar som':'Ativar som');
+  ui.soundBtn.setAttribute('aria-pressed',String(soundEnabled));
+  try{localStorage.setItem(SOUND_KEY,soundEnabled?'on':'off');}catch{}
 }
+function tone(freq=440,duration=.14,type='sine',volume=.04){audio?.play(freq,duration,type,volume);}
 function winSound(){tone(392,.16,'triangle');setTimeout(()=>tone(494,.2,'triangle'),110);setTimeout(()=>tone(659,.4,'triangle'),230);}
 function setHero(id,quiet=false){
   if(!actors||!actors[id])return;
@@ -95,11 +98,13 @@ function nearTarget(){
 }
 function useTarget(){
   if(paused||!started)return;
+  if(lotteryOpen){checkLottery();return;}
   if(dialogue){nextDialogue();return;}
   if(bikeEvent){dodge();return;}
   const target=nearTarget();
   if(!target){notify('Aproxime-se do marcador dourado para interagir.');return;}
   if(step===6){startBike();return;}
+  if(step===1&&!lotteryAccepted){openLottery();return;}
   if(step===3&&target.id!=='suitcase'){
     if(!packing.includes(target.id)){
       packing.push(target.id);
@@ -131,6 +136,25 @@ function useTarget(){
     }
     advanceTo(activeStep+1);
   });
+}
+function openLottery(){
+  if(lotteryOpen||dialogue||paused)return;
+  lotteryOpen=true;lotteryStage=0;
+  ui.lottery.hidden=false;ui.lotteryReveal.hidden=true;
+  ui.lotteryButton.textContent='CONFERIR RESULTADO';
+  ui.prompt.hidden=true;ui.mobile.hidden=true;
+  tone(420,.12,'triangle',.026);ui.lotteryButton.focus();
+}
+function checkLottery(){
+  if(!lotteryOpen||paused)return;
+  if(lotteryStage===0){
+    lotteryStage=1;ui.lotteryReveal.hidden=false;
+    ui.lotteryButton.textContent='COMEMORAR';
+    tone(600,.19,'triangle',.045);ui.lotteryButton.focus();return;
+  }
+  lotteryOpen=false;ui.lottery.hidden=true;
+  ui.mobile.hidden=paused||!mobile;lotteryAccepted=true;
+  useTarget();
 }
 function startBike(){
   if(bikeEvent||dialogue)return;
@@ -195,11 +219,8 @@ function getInput(){
   if(len>1){mx/=len;my/=len;}
   return {x:mx,y:my,run:held.has('ShiftLeft')||held.has('ShiftRight')};
 }
-function blocked(x,z,r=.38){
-  if(x<-48||x>129||z<-43||z>46)return true;
-  for(const c of world.colliders){
-    if(x+r>c.x1&&x-r<c.x2&&z+r>c.z1&&z-r<c.z2)return true;
-  }return false;
+function blocked(x,z,r=.38,height=0){
+  return isBlocked(x,z,r,height,world.colliders);
 }
 function move(entity,vx,vz,dt){
   const nx=entity.position.x+vx*dt,nz=entity.position.z+vz*dt;
@@ -235,12 +256,13 @@ function updateCamera(dt,immediate=false){
     const s=i/12;
     const cx=focus.x-forward.x*zoom*s,cz=focus.z-forward.z*zoom*s;
     const cy=focus.y+(3.1+pitch*5)*s;
-    if(cy<6.65&&blocked(cx,cz,.18)){dist=Math.min(dist,Math.max(2.3,zoom*((i-1)/12)));break;}
+    if(blocked(cx,cz,.18,cy)){dist=Math.min(dist,Math.max(2.3,zoom*((i-1)/12)));break;}
   }
   const wanted=focus.clone().addScaledVector(forward,-dist);
   wanted.y+=3.1+pitch*5;
   const look=focus.clone().addScaledVector(forward,1.8);
-  camera.position.lerp(wanted,immediate?1:1-Math.exp(-dt*5.8));
+  // Encurta imediatamente ao tocar num edifício para evitar oclusão de câmera.
+  camera.position.lerp(wanted,(immediate||dist<zoom-.01)?1:1-Math.exp(-dt*5.8));
   camera.lookAt(look);
 }
 function update(dt){
@@ -249,7 +271,8 @@ function update(dt){
   if(!started)return;
   pollGamepadActions();
   if(paused)return;
-  if(!dialogue&&!bikeEvent){
+  if(step<=5)audio?.update(dt);
+  if(!dialogue&&!bikeEvent&&!lotteryOpen){
     const input=getInput();
     tempForward.set(Math.sin(yaw),0,Math.cos(yaw));
     tempRight.set(Math.cos(yaw),0,-Math.sin(yaw));
@@ -280,7 +303,7 @@ function update(dt){
     world.bike.rotation.y=Math.sin(t*18)*.03;
     ui.eventBar.style.transform='scaleX('+clamp(1-t,0,1)+')';
     if(t>=1)finishBike();
-  }else if(!dialogue){
+  }else if(!dialogue&&!lotteryOpen){
     if(step===6&&nearTarget())startBike();
   }
   const marker=world.markers[activeTargetId()];
@@ -290,7 +313,7 @@ function update(dt){
     const look=Math.atan2(marker.point.x-pos.x,marker.point.z-pos.z)-yaw;
     ui.pointer.style.transform='rotate('+(-look*180/Math.PI)+'deg)';
     const close=distance<=marker.radius;
-    ui.prompt.hidden=!close||!!dialogue||!!bikeEvent;
+    ui.prompt.hidden=!close||!!dialogue||!!bikeEvent||lotteryOpen;
     ui.promptText.textContent=step===6?'Atravesse com cuidado':marker.label;
   }else ui.prompt.hidden=true;
   updateCamera(dt);
@@ -320,11 +343,14 @@ function start(){
   updateMission();snapCamera();
   if(step===0)showDialogue(INTRO,()=>notify('Procure o bilhete sobre a mesa da varanda.'));
   else notify('Progresso recuperado: '+getQuest(step).title);
+  ui.soundBtn.textContent=soundEnabled?'♪':'×';
+  ui.soundBtn.setAttribute('aria-label',soundEnabled?'Desativar som':'Ativar som');
+  ui.soundBtn.setAttribute('aria-pressed',String(soundEnabled));
 }
 function bindInputs(){
   const actionKeys=new Set(['Space','Tab','ArrowUp','ArrowDown','ArrowLeft','ArrowRight']);
   window.addEventListener('keydown',e=>{
-    if(actionKeys.has(e.code))e.preventDefault();
+    if(actionKeys.has(e.code)||(lotteryOpen&&e.code==='Enter'))e.preventDefault();
     held.add(e.code);
     if(e.repeat)return;
     if(e.code==='Escape'){togglePause();return;}
@@ -338,6 +364,8 @@ function bindInputs(){
   document.addEventListener('visibilitychange',()=>{if(document.hidden){held.clear();stick.x=stick.y=0;if(started&&!paused)togglePause();}});
   ui.dialog.addEventListener('click',()=>{if(!paused)nextDialogue();});
   el('startBtn').addEventListener('click',start);
+  ui.soundBtn.addEventListener('click',toggleSound);
+  ui.lotteryButton.addEventListener('click',checkLottery);
   el('pauseBtn').addEventListener('click',togglePause);
   el('resumeBtn').addEventListener('click',togglePause);
   el('restartBtn').addEventListener('click',restart);
@@ -346,7 +374,7 @@ function bindInputs(){
   el('touchSwitch').addEventListener('pointerdown',e=>{e.preventDefault();if(started&&!dialogue&&!bikeEvent)setHero(heroId==='joao'?'crist':'joao');});
   el('touchDodge').addEventListener('pointerdown',e=>{e.preventDefault();dodge();});
   let cameraPointer=null,lastX=0,lastY=0;
-  ui.canvas.addEventListener('pointerdown',e=>{if(!started||paused||dialogue)return;cameraPointer=e.pointerId;lastX=e.clientX;lastY=e.clientY;ui.canvas.setPointerCapture(e.pointerId);});
+  ui.canvas.addEventListener('pointerdown',e=>{if(!started||paused||dialogue||lotteryOpen)return;cameraPointer=e.pointerId;lastX=e.clientX;lastY=e.clientY;ui.canvas.setPointerCapture(e.pointerId);});
   ui.canvas.addEventListener('pointermove',e=>{
     if(e.pointerId!==cameraPointer)return;
     const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;
@@ -395,6 +423,13 @@ function setup(){
   actors.joao.position.set(-1.5,0,5);actors.crist.position.set(1.5,0,3);
   actors.joao.rotation.y=actors.crist.rotation.y=1.1;
   scene.add(actors.joao,actors.crist);
+  for(const id of ['lotteryTicket','lotteryResult']){
+    const target=el(id);
+    for(const n of LOTTERY_NUMBERS){
+      const token=document.createElement('span');
+      token.textContent=String(n).padStart(2,'0');target.appendChild(token);
+    }
+  }
   setHero('joao',true);world.setTarget('ticket');
   onResize();bindInputs();snapCamera();
   ui.loading.hidden=true;ui.debug.hidden=!DEBUG;
