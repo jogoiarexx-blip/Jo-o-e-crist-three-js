@@ -2,9 +2,9 @@ export const QUESTS=[
   {id:'ticket',title:'Encontre o bilhete da loteria',hint:'João deixou o bilhete na mesa, perto da varanda.'},
   {id:'radio',title:'Confira o resultado no rádio',hint:'Sintonize a estação e confira os números sorteados.'},
   {id:'crist',title:'Conte a novidade para Crist',hint:'Fale com seu companheiro de aventuras.'},
-  {id:'suitcase',title:'Arrume as malas',hint:'Separe os documentos, as roupas e a farofa antes de fechar a mala.'},
+  {id:'suitcase',title:'Arrume as malas',hint:'Entre na casa, pegue os documentos na escrivaninha, separe as roupas e a farofa; depois feche a mala no quarto.'},
   {id:'pantera',title:'Despeça-se de Pantera',hint:'Uma boa aventura merece uma despedida.'},
-  {id:'gate',title:'Saia da fazenda',hint:'Passe pela porteira e siga até a rodoviária.'},
+  {id:'gate',title:'Abra a porteira da fazenda',hint:'Siga a cerca até a porteira de madeira, perto da estrada. Abra-a antes de sair.'},
   {id:'crossing',title:'Atravesse a rua com cuidado',hint:'Siga pela cidade. Aqui até bicicleta assusta!'},
   {id:'bus',title:'Embarque na excursão para Vegas',hint:'O ônibus roxo está estacionado ao lado da rodoviária.'},
   {id:'done',title:'Prólogo concluído!',hint:'A viagem acabou de começar...'}
@@ -42,7 +42,7 @@ export const SCENES={
   clothes:[['CRIST','Separei duas mudas de roupa. João, isso aqui não é desfile de moda!']],
   farofa:[['JOÃO','Pronto, a farofa tá garantida. Não confio em comida de avião!']],
   suitcase:[
-    ['JOÃO','Chapéu, roupa de domingo, sabonete e a farofa para viagem!'],
+    ['JOÃO','Mala fechada aqui dentro de casa! Chapéu, roupa de domingo e a farofa pra viagem!'],
     ['CRIST','Farofa no avião, João?'],
     ['JOÃO','A gente não pode depender da comida dos outros!'],
     ['NARRADOR','As malas estão prontas. Pelo menos eles acham que estão.']
@@ -54,6 +54,8 @@ export const SCENES={
     ['NARRADOR','Pantera abana o rabo, sem imaginar a confusão que vem pela frente.']
   ],
   gate:[
+    ['JOÃO','Crist, segura aí que eu vou abrir essa porteira!'],
+    ['NARRADOR','A porteira range, as dobradiças giram e o caminho até a cidade fica livre.'],
     ['NARRADOR','Os dois seguem para a cidade, levando uma mala, um bilhete e uma confiança que provavelmente não deveriam ter.'],
     ['CRIST','Você sabe qual é o ônibus certo?'],
     ['JOÃO','Se tiver escrito Vegas, é nele que eu entro.'],
@@ -80,7 +82,7 @@ export const SCENES={
 };
 // Os objetos da Fazenda são colecionáveis narrativos, não itens compráveis.
 export const PACKING_ITEMS=Object.freeze([
-  {id:'documents',name:'Documentos',hint:'Procure os documentos na caixa junto à varanda.'},
+  {id:'documents',name:'Documentos',hint:'Entre pela porta aberta da casa e procure os documentos sobre a escrivaninha.'},
   {id:'clothes',name:'Roupas',hint:'Encontre a roupa dobrada perto do varal.'},
   {id:'farofa',name:'Farofa',hint:'Procure o pote de farofa perto do depósito.'}
 ]);

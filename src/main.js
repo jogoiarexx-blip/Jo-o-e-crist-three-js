@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import {buildWorld} from './world.js';
 import {createRuralAudio} from './audio.js';
 import {isBlocked} from './collision.js';
+import {cameraRelativeMove,rotateCameraRight} from './controls.js';
+import {isInsideHouse,FARM_HOUSE} from './farm-layout.js';
 import {createElder,animateElder} from './characters.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS} from './story.js';
 
@@ -24,7 +26,7 @@ try{soundEnabled=localStorage.getItem(SOUND_KEY)!=='off';}catch{}
 const held=new Set(),stick={x:0,y:0,id:null};
 const clamp=(a,min,max)=>Math.max(min,Math.min(max,a));
 const smooth=(current,target,dt,k)=>current+(target-current)*(1-Math.exp(-k*dt));
-const tempForward=new THREE.Vector3(),tempRight=new THREE.Vector3(),tempMove=new THREE.Vector3();
+const tempForward=new THREE.Vector3(),tempMove=new THREE.Vector3();
 const mobile=matchMedia('(pointer:coarse)').matches;
 function readSave(){
   try{return validateSave(JSON.parse(localStorage.getItem(SAVE_KEY)||'null'));}
@@ -69,6 +71,7 @@ function updateMission(){
   ui.mission.hidden=step>=8;
   world.setTarget(target);
   world.setPacked?.(packing);
+  if(step>5)world.setGateOpen?.(true);
   if(step>=8)ui.prompt.hidden=true;
 }
 function advanceTo(next){
@@ -124,6 +127,7 @@ function useTarget(){
   if(!lines)return;
   if(activeStep===1)winSound();else tone(600,.13,'triangle',.03);
   if(activeStep===4){world.reactPantera?.(clockTime);tone(330,.12,'sawtooth',.027);}
+  if(activeStep===5){world.openGate?.();tone(195,.27,'sawtooth',.023);}
   showDialogue(lines,()=>{
     if(activeStep===5){
       // Viagem curta, sem corredor vazio de caminhada.
@@ -212,7 +216,7 @@ function getInput(){
   if(pad){
     if(Math.abs(pad.axes[0]||0)>.18)mx+=pad.axes[0];
     if(Math.abs(pad.axes[1]||0)>.18)my-=pad.axes[1];
-    if(Math.abs(pad.axes[2]||0)>.20)yaw-=pad.axes[2]*.028;
+    if(Math.abs(pad.axes[2]||0)>.20)yaw=rotateCameraRight(yaw,pad.axes[2]*5.4);
     if(Math.abs(pad.axes[3]||0)>.20)pitch=clamp(pitch+pad.axes[3]*.012,.1,1.1);
   }
   const len=Math.hypot(mx,my);
@@ -229,6 +233,16 @@ function move(entity,vx,vz,dt){
 }
 function updateCompanion(dt){
   const me=actors[heroId],other=actors[heroId==='joao'?'crist':'joao'];
+  const meInside=isInsideHouse(me.position.x,me.position.z);
+  const companionInside=isInsideHouse(other.position.x,other.position.z);
+  // Reagrupa na passagem, sem teletransportar durante a travessia próxima à porta.
+  if(meInside!==companionInside){
+    const px=FARM_HOUSE.doorX+(meInside?-.32:.36);
+    const pz=FARM_HOUSE.doorZ+(meInside?-1.8:1.75);
+    if(Math.hypot(me.position.x-px,me.position.z-pz)>2.7){
+      other.position.set(px,0,pz);other.userData.moving=0;
+    }
+  }
   const dir=tempForward.set(Math.sin(me.rotation.y),0,Math.cos(me.rotation.y));
   const tx=me.position.x-dir.x*1.7+dir.z*.8;
   const tz=me.position.z-dir.z*1.7-dir.x*.8;
@@ -274,9 +288,8 @@ function update(dt){
   if(step<=5)audio?.update(dt);
   if(!dialogue&&!bikeEvent&&!lotteryOpen){
     const input=getInput();
-    tempForward.set(Math.sin(yaw),0,Math.cos(yaw));
-    tempRight.set(Math.cos(yaw),0,-Math.sin(yaw));
-    tempMove.copy(tempForward).multiplyScalar(input.y).addScaledVector(tempRight,input.x);
+    const heading=cameraRelativeMove(input.x,input.y,yaw);
+    tempMove.set(heading.x,0,heading.z);
     const len=tempMove.length();
     if(len>.001){
       tempMove.multiplyScalar(1/Math.max(1,len));
@@ -336,8 +349,9 @@ function start(){
   const data=readSave();step=data.step;packing=normalizePacking(data.packing);
   if(step===8){step=0;packing=[];writeSave();}
   const spawn=step<=5?{x:-1.5,z:5}:step===6?{x:49,z:9}:{x:77,z:11};
+  if(step===3){spawn.x=-12.2;spawn.z=-6.2;}
   actors.joao.position.set(spawn.x,0,spawn.z);
-  actors.crist.position.set(spawn.x+2,0,spawn.z-1);
+  actors.crist.position.set(spawn.x+1.3,0,spawn.z+0.5);
   setHero(data.hero,true);started=true;paused=false;
   ui.start.hidden=true;ui.loading.hidden=true;ui.hud.hidden=false;ui.mobile.hidden=!mobile;
   updateMission();snapCamera();
@@ -378,7 +392,7 @@ function bindInputs(){
   ui.canvas.addEventListener('pointermove',e=>{
     if(e.pointerId!==cameraPointer)return;
     const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;
-    yaw-=dx*.0052;pitch=clamp(pitch+dy*.004,.1,1.1);
+    yaw=rotateCameraRight(yaw,dx);pitch=clamp(pitch+dy*.004,.1,1.1);
   });
   const resetCameraPointer=e=>{if(e.pointerId===cameraPointer)cameraPointer=null;};
   ui.canvas.addEventListener('pointerup',resetCameraPointer);

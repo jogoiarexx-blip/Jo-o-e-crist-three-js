@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.1.2 — cenários, sorteio e câmera na Fase 1).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Primeiro protótipo jogável (v0.1.3 — interior jogável, porteira de fazenda e controles corrigidos).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -64,6 +64,15 @@ A prioridade atual é **Fase 1 — Fazenda**. Não estamos expandindo as demais 
 - Pantera ganha reação visual ao se despedir dos amigos.
 - Testes unitários adicionais exercitam sequência dos objetos e migração de saves.
 - Nenhuma nova fase foi incluída.
+
+### Evolução 0.1.3 — lógica espacial da Fazenda
+- A casa foi convertida em ambiente **acessível**: paredes com abertura real, porta aberta, chão de madeira, cama, escrivaninha, armário e teto que some da câmera quando o herói entra.
+- Documentos sobre a escrivaninha **dentro da casa**; mala no quarto, com pontos de interação e alcance compatíveis com os móveis.
+- Porteira de madeira reconstruída na cerca perimetral: montantes, três travessas, escora diagonal, dobradiças e abertura animada ao interagir.
+- Colisão de paredes substituída por cinco segmentos com passagem frontal livre; a porteira tem colisão enquanto fechada e a remove ao abrir.
+- Arrastar a câmera ou usar analógico direito agora gira o olhar no mesmo sentido do comando; A/D e os analógicos seguem os lados da câmera. Testes de movimento, acessibilidade, entrada e porteira.
+- Companheiro reagrupa quando alguém cruza de fora para dentro da casa sem atravessar paredes.
+- **A rodoviária e o ônibus não foram modificados.** Ainda pendente verificar gameplay real no navegador, animações e desempenho.
 
 ## Próximas prioridades
 

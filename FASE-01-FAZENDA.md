@@ -1,5 +1,5 @@
 # Fase 01 — A Fazenda: plano de acabamento
-**Estado da construção:** v0.1.2 — ambientação e confiabilidade da Fazenda; **não considerada finalizada**.
+**Estado da construção:** v0.1.3 — casa acessível, posições coerentes e porteira reconstruída; **não considerada finalizada**.
 
 ## Premissa
 João e Crist são dois amigos idosos que moram no interior. Após achar o bilhete e ouvir o resultado no rádio, eles descobrem que ficaram ricos e começam a preparar uma viagem para conhecer Las Vegas.
@@ -23,10 +23,16 @@ João e Crist são dois amigos idosos que moram no interior. Após achar o bilhe
 - [x] Galinhas, poço, horta, fardos e rádio apoiado em mesa para tornar a Fazenda menos vazia.
 - [x] Colisões por altura de obstáculos, sem atravessar cercas ou a mesa; testes unitários das regras.
 - [x] **Nenhuma expansão da rodoviária, ônibus ou Vegas.**
+- [x] Entrada real na casa: substituído collider único por paredes segmentadas, com corredor de porta.
+- [x] Mesa de documentos e mala reposicionadas **dentro da casa**, com acessibilidade testada por geometria.
+- [x] Câmera retira visualmente o telhado no interior para permitir exploração e coleta.
+- [x] Porteira de madeira conectada à cerca com escora diagonal, dobradiças, giro animado e remoção da colisão ao abrir.
+- [x] Alinhamento dos controles de esquerda/direita e arrasto de câmera, coberto por testes.
 
 ## Pendente antes de marcar a Fazenda como pronta
 - [ ] Abrir o jogo em navegador de desktop e Android, jogar desde o início até a porteira sem usar atalhos.
-- [ ] Conferir que todos os marcadores ficam acessíveis sem atravessar paredes, cercas ou objetos.
+- [x] Testes geométricos de porta, aproximação da mesa e mala e passagem pela porteira.
+- [ ] Conferir visualmente no navegador que todos os marcadores ficam acessíveis sem atravessar paredes, cercas ou objetos.
 - [ ] Conferir câmera perto da varanda, do galpão, de Pantera e da saída.
 - [ ] Testar controles teclado, toque, gamepad e pausa durante os diálogos.
 - [ ] Recarregar a página após coletar apenas 1 item e depois 2 itens: confirmar que não reaparecem.
