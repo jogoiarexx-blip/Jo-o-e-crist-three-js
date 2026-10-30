@@ -174,6 +174,27 @@ export function buildWorld(scene){
   box(scene,.55,.17,.15,mat('#d9c4a4'),-12.5,.89,3.6);
   box(scene,.8,.6,.52,mat('#845837'),-13.3,.31,3.9);
   box(scene,2.1,1,.85,mat('#bc946d'),4.5,.53,-9);
+  // Fazenda — os itens precisam ser realmente encontrados e guardados.
+  // São malhas procedurais temporárias, substituíveis por GLBs posteriormente.
+  const packingProps={};
+  const documents=new THREE.Group();documents.position.set(-6.0,0,.7);scene.add(documents);
+  box(documents,.95,.55,.75,mat('#806243'),0,.31,0);
+  box(documents,.68,.045,.47,mat('#f9edcf'),0,.65,0);
+  box(documents,.52,.04,.36,mat('#d7b15b'),0,.71,0);
+  packingProps.documents=documents;
+
+  const clothes=new THREE.Group();clothes.position.set(-1.5,0,-5.5);scene.add(clothes);
+  box(clothes,1.25,.43,.82,wood,0,.23,0);
+  box(clothes,1.02,.20,.69,mat('#75999f'),0,.55,0);
+  box(clothes,.79,.16,.48,mat('#ecd6b7'),0,.73,0);
+  packingProps.clothes=clothes;
+
+  const farofa=new THREE.Group();farofa.position.set(6.1,0,-7.9);scene.add(farofa);
+  cyl(farofa,.35,.39,.78,mat('#cfb87d'),0,.42,0,9);
+  cyl(farofa,.43,.43,.11,mat('#80683f'),0,.87,0,9);
+  box(farofa,.48,.25,.055,mat('#f3e5b7'),0,.42,.39);
+  packingProps.farofa=farofa;
+
   const gateA=box(scene,.22,1.9,.28,wood,11,.95,5);
   const gateB=box(scene,.22,1.9,.28,wood,13,.95,5);
   box(scene,2,.12,.2,wood,12,.6,5);box(scene,2,.12,.2,wood,12,1.2,5);
@@ -188,7 +209,10 @@ export function buildWorld(scene){
   addMarker('ticket',-4.6,2.3,'Conferir bilhete',3.1);
   addMarker('radio',-10.5,1,'Ligar o rádio',2.6);
   addMarker('crist',1.5,0,'Conversar com Crist',3.2);
-  addMarker('suitcase',-12.5,3.6,'Arrumar malas',3.1);
+  addMarker('documents',-6.0,.7,'Guardar documentos',2.3);
+  addMarker('clothes',-1.5,-5.5,'Pegar roupas',2.3);
+  addMarker('farofa',6.1,-7.9,'Guardar a farofa',2.3);
+  addMarker('suitcase',-12.5,3.6,'Fechar as malas',3.1);
   addMarker('pantera',2.5,-3.4,'Falar com Pantera',3.1);
   addMarker('gate',12,5,'Sair da fazenda',4);
   addMarker('crossing',68,11,'Atravessar a rua',6);
@@ -201,10 +225,16 @@ export function buildWorld(scene){
       p.castShadow=false;
     }scene.add(g);clouds.push(g);
   }
-  return {markers,colliders,bus,bike,pantera,clouds,sun,radio,ticket,suitcase,
+  let panteraExcitedUntil=0;
+  return {markers,colliders,bus,bike,pantera,clouds,sun,radio,ticket,suitcase,packingProps,
     setTarget(id){for(const o of Object.values(markers))o.holder.visible=o.id===id;},
+    setPacked(ids){
+      const done=new Set(Array.isArray(ids)?ids:[]);
+      for(const [id,object] of Object.entries(packingProps))object.visible=!done.has(id);
+    },
+    reactPantera(time){panteraExcitedUntil=time+5;},
     update(time,target){for(const o of Object.values(markers))if(o.holder.visible){o.beacon.position.y=2.3+Math.sin(time*2.3)*.25;o.ring.rotation.z=time*.25;}
-      pantera.userData.tail.rotation.z=Math.sin(time*7)*.35;
+      pantera.userData.tail.rotation.z=Math.sin(time*(time<panteraExcitedUntil?18:7))*(time<panteraExcitedUntil?.75:.35);
       bus.rotation.z=Math.sin(time*2)*.0015;
       for(let i=0;i<clouds.length;i++)clouds[i].position.x+=.0002*(i%3+1);
       sun.position.set(target.x-23,40,target.z+18);sun.target.position.set(target.x,0,target.z);sun.target.updateMatrixWorld();

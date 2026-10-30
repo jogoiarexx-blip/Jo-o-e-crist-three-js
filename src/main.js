@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {buildWorld} from './world.js';
 import {createElder,animateElder} from './characters.js';
-import {QUESTS,INTRO,SCENES,getQuest,validateSave} from './story.js';
+import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking} from './story.js';
 
 const el=id=>document.getElementById(id);
 const ui={canvas:el('game'),loading:el('loading'),hud:el('hud'),mission:el('mission'),objective:el('objective'),
@@ -12,7 +12,7 @@ const ui={canvas:el('game'),loading:el('loading'),hud:el('hud'),mission:el('miss
   event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText')};
 const SAVE_KEY='joaoCrist3DSave_v1';
 const DEBUG=new URLSearchParams(location.search).has('debug');
-let renderer,scene,camera,world,actors,heroId='joao',step=0,started=false,paused=false;
+let renderer,scene,camera,world,actors,heroId='joao',step=0,packing=[],started=false,paused=false;
 let yaw=1.12,pitch=.48,zoom=8.2,clockTime=0,lastFrame=0,toastTimer=0;
 let dialogue=null,bikeEvent=null,actionHeld=false,prevPad={};
 let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null;
@@ -26,7 +26,7 @@ function readSave(){
   catch{return validateSave(null);}
 }
 function writeSave(){
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:1,step,hero:heroId}));}
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:1,step,hero:heroId,packing:normalizePacking(packing)}));}
   catch{notify('O navegador está bloqueando o salvamento local.');}
 }
 function notify(text){
@@ -51,11 +51,22 @@ function setHero(id,quiet=false){
   if(!quiet){tone(460,.09);notify('Agora você controla '+ui.hero.textContent+'.');writeSave();}
   actors[other].userData.isCompanion=true;actors[id].userData.isCompanion=false;
 }
+function activeTargetId(){
+  return step===3?nextPackingTarget(packing):getQuest(step).id;
+}
 function updateMission(){
-  const q=getQuest(step);ui.objective.textContent=q.title;ui.hint.textContent=q.hint;
-  ui.mission.hidden=false;
-  world.setTarget(q.id);
-  if(step>=8){ui.mission.hidden=true;ui.prompt.hidden=true;}
+  const q=getQuest(step),target=activeTargetId();
+  ui.objective.textContent=q.title;
+  ui.hint.textContent=q.hint;
+  if(step===3){
+    const item=PACKING_ITEMS.find(candidate=>candidate.id===target);
+    ui.objective.textContent='Arrume as malas — '+getPackingProgress(packing)+'/3';
+    ui.hint.textContent=item?item.hint:'Itens reunidos! Volte à mala para guardar tudo.';
+  }
+  ui.mission.hidden=step>=8;
+  world.setTarget(target);
+  world.setPacked?.(packing);
+  if(step>=8)ui.prompt.hidden=true;
 }
 function advanceTo(next){
   step=clamp(next,0,8);writeSave();updateMission();
@@ -72,14 +83,14 @@ function displayDialogueLine(){
   ui.dialogCount.textContent=(dialogue.index+1)+' / '+dialogue.lines.length;tone(315,.065,'sine',.017);
 }
 function nextDialogue(){
-  if(!dialogue)return;
+  if(!dialogue||paused)return;
   dialogue.index++;
   if(dialogue.index<dialogue.lines.length)displayDialogueLine();
   else{const cb=dialogue.finish;dialogue=null;ui.dialog.hidden=true;cb?.();}
 }
 function nearTarget(){
   if(!world||!actors||step>7)return null;
-  const m=world.markers[getQuest(step).id];if(!m)return null;
+  const m=world.markers[activeTargetId()];if(!m)return null;
   return Math.hypot(actors[heroId].position.x-m.point.x,actors[heroId].position.z-m.point.z)<=m.radius?m:null;
 }
 function useTarget(){
@@ -89,11 +100,25 @@ function useTarget(){
   const target=nearTarget();
   if(!target){notify('Aproxime-se do marcador dourado para interagir.');return;}
   if(step===6){startBike();return;}
+  if(step===3&&target.id!=='suitcase'){
+    if(!packing.includes(target.id)){
+      packing.push(target.id);
+      world.setPacked?.(packing);
+      writeSave();
+      updateMission();
+      tone(580,.14,'triangle',.033);
+      const item=PACKING_ITEMS.find(entry=>entry.id===target.id);
+      notify((item?.name||'Item')+' guardado! '+getPackingProgress(packing)+'/3');
+      showDialogue(SCENES[target.id]);
+    }
+    return;
+  }
   const activeStep=step;
   const scenes=[SCENES.ticket,SCENES.radio,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,null,SCENES.bus];
   const lines=scenes[activeStep];
   if(!lines)return;
   if(activeStep===1)winSound();else tone(600,.13,'triangle',.03);
+  if(activeStep===4){world.reactPantera?.(clockTime);tone(330,.12,'sawtooth',.027);}
   showDialogue(lines,()=>{
     if(activeStep===5){
       // Viagem curta, sem corredor vazio de caminhada.
@@ -258,7 +283,7 @@ function update(dt){
   }else if(!dialogue){
     if(step===6&&nearTarget())startBike();
   }
-  const marker=world.markers[getQuest(step).id];
+  const marker=world.markers[activeTargetId()];
   if(marker&&step<8){
     const pos=actors[heroId].position,distance=Math.hypot(pos.x-marker.point.x,pos.z-marker.point.z);
     ui.distance.textContent=Math.ceil(distance)+' METROS';
@@ -285,8 +310,8 @@ function render(now){
 function start(){
   if(started)return;
   createAudio();el('startBtn').blur();
-  const data=readSave();step=data.step;
-  if(step===8){step=0;writeSave();}
+  const data=readSave();step=data.step;packing=normalizePacking(data.packing);
+  if(step===8){step=0;packing=[];writeSave();}
   const spawn=step<=5?{x:-1.5,z:5}:step===6?{x:49,z:9}:{x:77,z:11};
   actors.joao.position.set(spawn.x,0,spawn.z);
   actors.crist.position.set(spawn.x+2,0,spawn.z-1);
@@ -311,7 +336,7 @@ function bindInputs(){
   window.addEventListener('keyup',e=>held.delete(e.code));
   window.addEventListener('blur',()=>{held.clear();stick.x=stick.y=0;if(started&&!paused)togglePause();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){held.clear();stick.x=stick.y=0;if(started&&!paused)togglePause();}});
-  ui.dialog.addEventListener('click',nextDialogue);
+  ui.dialog.addEventListener('click',()=>{if(!paused)nextDialogue();});
   el('startBtn').addEventListener('click',start);
   el('pauseBtn').addEventListener('click',togglePause);
   el('resumeBtn').addEventListener('click',togglePause);

@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.1.0).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Primeiro protótipo jogável (v0.1.1 — polimento da Fase 1).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -17,9 +17,9 @@ https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 1. Fazenda 3D low poly, casa, galpão, pomar, cerca, Pantera, estrada e cidade com rodoviária e ônibus.
 2. João e Crist 3D procedurais com caminhada, braços/pernas animados, câmera em terceira pessoa e alternância por TAB.
 3. Companheiro que acompanha o protagonista e desvia dos edifícios estáticos.
-4. Roteiro da **loteria**, bilhete, rádio, conversa, malas, despedida, porteira, rua e minijogo de quase atropelamento de bicicleta.
+4. Roteiro da **loteria**, bilhete, rádio, conversa, **preparação real das malas (documentos, roupas e farofa)**, despedida de Pantera, porteira, rua e quase atropelamento de bicicleta.
 5. Embarque no ônibus errado, encerramento do prólogo e gancho para o capítulo da excursão.
-6. Saves locais isolados da edição 2D (chave joaoCrist3DSave_v1); pausa, touch, gamepad básico e modo de diagnóstico ?debug=1.
+6. Saves locais isolados da edição 2D (chave joaoCrist3DSave_v1), incluindo os itens já guardados na mala; pausa, touch, gamepad básico e modo de diagnóstico ?debug=1.
 7. Publicação estática via GitHub Pages e workflow automatizado.
 
 **Ainda não incluído:** personagens GLB com rig, animações Motion Capture, áudio musical, interiores completos, boate jogável, Las Vegas completa, colisão avançada, coop local, tradução, QA em Android real. As atuais figuras procedurais são placeholders de produção, **não** ativos definitivos.
@@ -43,6 +43,18 @@ npm test verifica o roteiro e a validação de saves. npm run check verifica a s
 ## GitHub Pages
 
 O workflow publica o conteúdo da raiz quando houver push na branch main. Se este for o primeiro uso do Pages no repositório, é necessário habilitar **Settings → Pages → Build and deployment → Source: GitHub Actions**. A execução pode ser acompanhada na aba Actions.
+
+## Desenvolvimento fase a fase
+A prioridade atual é **Fase 1 — Fazenda**. Não estamos expandindo as demais áreas até fechar um checklist real de jogabilidade: navegação, interações, narrativa, câmera, colisões, controles e testes manuais em Android/desktop. A cidade e o ônibus continuam no protótipo, mas serão refinados em etapas posteriores.
+
+### Evolução 0.1.1: preparação da viagem
+- Documentos, roupa e farofa são objetos reais do cenário; cada um tem uma interação contextual e um pequeno diálogo.
+- O jogador só pode fechar a mala quando os três itens foram guardados.
+- Os objetos coletados desaparecem do mundo, e o progresso fica salvo.
+- Saves anteriores à atualização são aceitos: se a fase da mala já passou, os três itens são considerados guardados.
+- Pantera ganha reação visual ao se despedir dos amigos.
+- Testes unitários adicionais exercitam sequência dos objetos e migração de saves.
+- Nenhuma nova fase foi incluída.
 
 ## Próximas prioridades
 

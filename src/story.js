@@ -2,7 +2,7 @@ export const QUESTS=[
   {id:'ticket',title:'Encontre o bilhete da loteria',hint:'João deixou o bilhete na mesa, perto da varanda.'},
   {id:'radio',title:'Confira o resultado no rádio',hint:'Sintonize a estação e confira os números sorteados.'},
   {id:'crist',title:'Conte a novidade para Crist',hint:'Fale com seu companheiro de aventuras.'},
-  {id:'suitcase',title:'Arrume as malas',hint:'Reúna as duas malas que estão na varanda.'},
+  {id:'suitcase',title:'Arrume as malas',hint:'Separe os documentos, as roupas e a farofa antes de fechar a mala.'},
   {id:'pantera',title:'Despeça-se de Pantera',hint:'Uma boa aventura merece uma despedida.'},
   {id:'gate',title:'Saia da fazenda',hint:'Passe pela porteira e siga até a rodoviária.'},
   {id:'crossing',title:'Atravesse a rua com cuidado',hint:'Siga pela cidade. Aqui até bicicleta assusta!'},
@@ -36,6 +36,9 @@ export const SCENES={
     ['CRIST','Pelo amor de Deus, pelo menos arruma uma mala decente.'],
     ['JOÃO','Vegas que nos aguarde!']
   ],
+  documents:[['JOÃO','Passaporte, identidade e as passagens. Agora sim podemos viajar!']],
+  clothes:[['CRIST','Separei duas mudas de roupa. João, isso aqui não é desfile de moda!']],
+  farofa:[['JOÃO','Pronto, a farofa tá garantida. Não confio em comida de avião!']],
   suitcase:[
     ['JOÃO','Chapéu, roupa de domingo, sabonete e a farofa para viagem!'],
     ['CRIST','Farofa no avião, João?'],
@@ -73,8 +76,27 @@ export const SCENES={
     ['NARRADOR','E assim João e Crist embarcam no ônibus errado. O destino? Uma grande aventura.']
   ]
 };
+// Os objetos da Fazenda são colecionáveis narrativos, não itens compráveis.
+export const PACKING_ITEMS=Object.freeze([
+  {id:'documents',name:'Documentos',hint:'Procure os documentos na caixa junto à varanda.'},
+  {id:'clothes',name:'Roupas',hint:'Encontre a roupa dobrada perto do varal.'},
+  {id:'farofa',name:'Farofa',hint:'Procure o pote de farofa perto do depósito.'}
+]);
+const validPackingIds=new Set(PACKING_ITEMS.map(item=>item.id));
+export function normalizePacking(value){
+  if(!Array.isArray(value))return [];
+  return [...new Set(value.filter(id=>typeof id==='string'&&validPackingIds.has(id)))];
+}
+export function nextPackingTarget(value){
+  const done=new Set(normalizePacking(value));
+  return PACKING_ITEMS.find(item=>!done.has(item.id))?.id||'suitcase';
+}
+export function getPackingProgress(value){return normalizePacking(value).length;}
 export function getQuest(step){return QUESTS[Math.min(QUESTS.length-1,Math.max(0,step|0))];}
 export function validateSave(raw){
-  if(!raw||typeof raw!=='object'||raw.version!==1)return {version:1,step:0,hero:'joao'};
-  return {version:1,step:Math.max(0,Math.min(8,Number(raw.step)||0)),hero:raw.hero==='crist'?'crist':'joao'};
+  if(!raw||typeof raw!=='object'||raw.version!==1)return {version:1,step:0,hero:'joao',packing:[]};
+  const step=Math.max(0,Math.min(8,Number(raw.step)||0));
+  // Save antigo: se a mala já foi concluída, considerar todos os itens guardados.
+  const packing=step>3?PACKING_ITEMS.map(item=>item.id):normalizePacking(raw.packing);
+  return {version:1,step,hero:raw.hero==='crist'?'crist':'joao',packing};
 }
