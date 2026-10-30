@@ -5,11 +5,11 @@ import {QUESTS,getQuest,validateSave,FINAL_STEP} from '../src/story.js';
 import {isBlocked,canReachInteraction} from '../src/collision.js';
 
 test('Capítulo 1 preserva o ciclista e ônibus, adicionando praça, bagagem e guichê',()=>{
-  assert.deepEqual(QUESTS.slice(7).map(q=>q.id),[
-    'cityWelcome','crossing','cityBag','cityClerk','bus','done'
+  assert.deepEqual(QUESTS.slice(7,12).map(q=>q.id),[
+    'cityWelcome','crossing','cityBag','cityClerk','bus'
   ]);
-  assert.equal(FINAL_STEP,12);
-  for(let s=7;s<=12;s++)assert.ok(getQuest(s).hint);
+  assert.equal(FINAL_STEP,19);
+  for(let s=7;s<=11;s++)assert.ok(getQuest(s).hint);
 });
 test('três NPCs distintos com diálogos opcionais acessíveis',()=>{
   assert.equal(CITY_NPCS.length,3);

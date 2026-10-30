@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {QUESTS,SCENES,INTRO,getQuest,validateSave,PACKING_ITEMS,normalizePacking,nextPackingTarget,getPackingProgress,LOTTERY_NUMBERS,SAVE_VERSION,FINAL_STEP,canUsePackingItem} from '../src/story.js';
 
 test('campanha ampliada: despertar, sorteio, bilhete, conversa e TODAS as cenas antigas',()=>{
-  assert.equal(QUESTS.length,13);
-  assert.equal(FINAL_STEP,12);
-  assert.deepEqual(QUESTS.map(q=>q.id),['wake','radio','ticket','crist','suitcase','pantera','gate','cityWelcome','crossing','cityBag','cityClerk','bus','done']);
+  assert.equal(QUESTS.length,20);
+  assert.equal(FINAL_STEP,19);
+  assert.deepEqual(QUESTS.map(q=>q.id),['wake','radio','ticket','crist','suitcase','pantera','gate','cityWelcome','crossing','cityBag','cityClerk','bus','busSeat','busCrew','busCase','busInspect','busConnect','busDance','busReveal','done']);
   assert.equal(getQuest(99).id,'done');
   assert.equal(getQuest(-1).id,'wake');
   assert.equal(getQuest(7).id,'cityWelcome');
@@ -13,6 +13,10 @@ test('campanha ampliada: despertar, sorteio, bilhete, conversa e TODAS as cenas 
   assert.equal(getQuest(9).id,'cityBag');
   assert.equal(getQuest(10).id,'cityClerk');
   assert.equal(getQuest(11).id,'bus');
+  assert.equal(getQuest(12).id,'busSeat');
+  assert.equal(getQuest(15).id,'busInspect');
+  assert.equal(getQuest(17).id,'busDance');
+  assert.equal(getQuest(18).id,'busReveal');
 });
 test('diálogos principais estão presentes',()=>{
   assert.ok(INTRO.length>=4);
@@ -21,9 +25,9 @@ test('diálogos principais estão presentes',()=>{
     for(const line of SCENES[key])assert.ok(line.length===2&&line[0]&&line[1]);
   }
 });
-test('saves v1 e v2 preservam capítulos, itens e conteúdo sem regressão',()=>{
-  assert.equal(SAVE_VERSION,3);
-  assert.deepEqual(validateSave(null),{version:3,step:0,hero:'joao',packing:[]});
+test('saves v1/v2/v3 migram sem perder os capítulos anteriores',()=>{
+  assert.equal(SAVE_VERSION,4);
+  assert.deepEqual(validateSave(null),{version:4,step:0,hero:'joao',packing:[]});
   assert.equal(validateSave({version:1,step:1,hero:'crist'}).step,2);
   assert.equal(validateSave({version:1,step:2,hero:'crist'}).step,3);
   assert.equal(validateSave({version:1,step:3,packing:['documents']}).step,4);
@@ -37,6 +41,9 @@ test('saves v1 e v2 preservam capítulos, itens e conteúdo sem regressão',()=>
   assert.equal(validateSave({version:3,step:10}).step,10);
   assert.equal(validateSave({version:3,step:11}).step,11);
   assert.equal(validateSave({version:3,step:200}).step,12);
+  assert.equal(validateSave({version:4,step:200}).step,19);
+  assert.equal(validateSave({version:4,step:16}).step,16);
+  assert.equal(validateSave({version:4,step:18,hero:'crist'}).hero,'crist');
   assert.equal(validateSave({version:1,step:-3}).step,0);
   assert.equal(validateSave({version:3,step:4,hero:'forged'}).hero,'joao');
   assert.equal(validateSave({version:99,step:7}).step,0);

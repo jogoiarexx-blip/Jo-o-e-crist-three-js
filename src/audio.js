@@ -1,14 +1,28 @@
 // Áudio rural procedural criado pelo WebAudio, sem música protegida e sem autoplay.
 export function createRuralAudio(){
   const AudioEngine=globalThis.AudioContext||globalThis.webkitAudioContext;
-  let ctx=null,master=null,enabled=true,elapsed=0,chirpCount=0;
+  let ctx=null,master=null,enabled=true,elapsed=0,chirpCount=0,busActive=false,busGain=null,busOsc=null;
   function resume(){
     if(!AudioEngine)return false;
     try{
-      if(!ctx){ctx=new AudioEngine();master=ctx.createGain();master.gain.value=enabled?.65:0;master.connect(ctx.destination);}
+      if(!ctx){ctx=new AudioEngine();master=ctx.createGain();master.gain.value=enabled?.65:0;master.connect(ctx.destination);if(busActive)setBusActive(true);}
       if(ctx.state==='suspended')ctx.resume().catch(()=>{});
       return true;
     }catch{return false;}
+  }
+  function setBusActive(value){
+    busActive=!!value;
+    if(!ctx)return;
+    if(busActive&&!busGain){
+      busGain=ctx.createGain();busGain.gain.value=.0001;
+      const lowpass=ctx.createBiquadFilter();lowpass.type='lowpass';lowpass.frequency.value=105;
+      busOsc=ctx.createOscillator();busOsc.type='sawtooth';busOsc.frequency.value=44;
+      busOsc.connect(lowpass).connect(busGain).connect(master);busOsc.start();
+    }
+    if(busGain){
+      busGain.gain.cancelScheduledValues(ctx.currentTime);
+      busGain.gain.setTargetAtTime(busActive?.017:.0001,ctx.currentTime,.24);
+    }
   }
   function play(frequency,duration=.13,type='sine',volume=.035){
     if(!enabled||!ctx||ctx.state!=='running')return;
@@ -61,17 +75,17 @@ export function createRuralAudio(){
     }
   }
   return {
-    resume,play,footstep,bark,
+    resume,play,footstep,bark,setBusActive,
     update(dt){
       if(!enabled||!ctx||ctx.state!=='running')return;
       elapsed+=Math.max(0,Math.min(.1,dt));
-      if(elapsed>=7.5){elapsed-=7.5;bird();}
+      if(!busActive&&elapsed>=7.5){elapsed-=7.5;bird();}
     },
     setEnabled(value){
       enabled=!!value;
       if(master&&ctx){master.gain.cancelScheduledValues(ctx.currentTime);master.gain.setTargetAtTime(enabled?.65:0,ctx.currentTime,.035);}
       if(enabled)resume();
     },
-    close(){if(ctx){ctx.close().catch(()=>{});ctx=null;master=null;}}
+    close(){if(ctx){busOsc?.stop();ctx.close().catch(()=>{});ctx=null;master=null;busGain=null;busOsc=null;}}
   };
 }

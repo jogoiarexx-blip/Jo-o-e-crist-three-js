@@ -8,6 +8,7 @@ import {FARM_MEMORIES,nearbyMemory,normalizeMemories} from './farm-memories.js';
 import {cameraRig} from './camera-logic.js';
 import {easeVelocity,moveWithCollision,joystickYaw} from './locomotion.js';
 import {CITY_CHOICES,findCityNpc,checkCityAnswer} from './city-state.js';
+import {BUS_START,BUS_SPAWN,BUS_CHOICES,BUS_SCENES,RHYTHM_SEQUENCE,RHYTHM_LABELS,RHYTHM_OPTIONS,checkBusAnswer,normalizeRhythmProgress,inputRhythm,findBusNpc} from './bus-state.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
@@ -20,11 +21,22 @@ const ui={canvas:el('game'),loading:el('loading'),hud:el('hud'),mission:el('miss
   event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText'),lottery:el('lotteryPanel'),lotteryButton:el('lotteryButton'),lotteryReveal:el('lotteryReveal'),soundBtn:el('soundBtn'),choice:el('cityChoice'),choiceHeading:el('cityChoiceHeading'),choiceText:el('cityChoiceText'),choiceButtons:el('cityChoiceButtons')};
 const SAVE_KEY='joaoCrist3DSave_v1';
 const MEMORY_KEY='joaoCrist3DFarmMemories_v1';
+const BUS_RHYTHM_KEY='joaoCrist3DBusRhythm_v1';
 const DEBUG=new URLSearchParams(location.search).has('debug');
 let renderer,scene,camera,world,actors,heroId='joao',step=0,packing=[],started=false,paused=false;
 let yaw=1.12,pitch=.48,zoom=8.2,clockTime=0,lastFrame=0,toastTimer=0;
 let dialogue=null,bikeEvent=null,lotteryOpen=false,lotteryStage=0,lotteryAccepted=false,prevPad={};
-let choiceKind=null,choiceIndex=0;
+let choiceKind=null,choiceIndex=0,rhythmProgress=0;
+function readRhythm(){try{return normalizeRhythmProgress(JSON.parse(localStorage.getItem(BUS_RHYTHM_KEY)||'0'));}catch{return 0;}}
+function saveRhythm(){try{localStorage.setItem(BUS_RHYTHM_KEY,JSON.stringify(rhythmProgress));}catch{notify('Não foi possível salvar o progresso da dança.');}}
+function puzzleDefinition(kind){
+  if(kind==='rhythm')return {
+    heading:'NÚMERO MUSICAL · '+(rhythmProgress+1)+' / '+RHYTHM_SEQUENCE.length,
+    text:'Sequência: PALMAS, PASSO, GIRO, PALMAS. Próximo movimento: '+RHYTHM_LABELS[RHYTHM_SEQUENCE[rhythmProgress]]+'.',
+    options:RHYTHM_OPTIONS
+  };
+  return CITY_CHOICES[kind]||BUS_CHOICES[kind]||null;
+}
 let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null;
 let walking={x:0,z:0},lastStepSound=0;
 const SOUND_KEY='joaoCrist3DSound_v1';
@@ -85,15 +97,30 @@ function updateMission(){
     ui.objective.textContent='Arrume as malas — '+getPackingProgress(packing)+'/3';
     ui.hint.textContent=item?item.hint:'Itens reunidos! Troque para João e volte à mala dentro da casa.';
   }
-  el('chapter').textContent=step>=7?'CAPÍTULO 01 · RODOVIÁRIA':'CAPÍTULO 00 · FAZENDA';
+  el('chapter').textContent=step>=BUS_START?'CAPÍTULO 02 · EXCURSÃO ERRADA':step>=7?'CAPÍTULO 01 · RODOVIÁRIA':'CAPÍTULO 00 · FAZENDA';
+  if(step===17)ui.hint.textContent='Faça PALMAS, PASSO, GIRO, PALMAS. Ritmo: '+rhythmProgress+'/4. Vá ao centro do corredor.';
   ui.mission.hidden=step>=FINAL_STEP;
+  world.setChapter?.(step);
   world.setTarget(target);
   world.setPacked?.(packing);
+  world.setSoundFixed?.(step>=17);
+  world.setShowActive?.(step===17);
+  audio?.setBusActive?.(step>=BUS_START&&!paused);
   if(step>6)world.setGateOpen?.(true);
   if(step>=FINAL_STEP)ui.prompt.hidden=true;
 }
 function advanceTo(next){
-  step=clamp(next,0,FINAL_STEP);writeSave();updateMission();
+  const previous=step;step=clamp(next,0,FINAL_STEP);
+  if(step===BUS_START&&previous===11){
+    actors[heroId].position.set(BUS_SPAWN.x,0,BUS_SPAWN.z);
+    const other=heroId==='joao'?'crist':'joao';
+    actors[other].position.set(BUS_SPAWN.x+.85,0,BUS_SPAWN.z-1.2);
+    yaw=1.4;zoom=6.4;walking={x:0,z:0};
+    notify('Vocês embarcaram! Conheça a trupe da Excursão Estelar.');
+  }
+  if(step===17&&previous!==17){rhythmProgress=0;saveRhythm();}
+  writeSave();updateMission();
+  if(step===BUS_START&&previous===11)snapCamera();
   if(step===FINAL_STEP){ui.end.hidden=false;ui.hud.hidden=true;ui.mobile.hidden=true;ui.mission.hidden=true;started=false;}
 }
 function showDialogue(lines,onFinish){
@@ -139,13 +166,24 @@ function useTarget(){
       showDialogue(extra.lines,()=>notify('Lembrança da Fazenda: '+memories.size+'/'+FARM_MEMORIES.length+'.'));
       return;
     }
-    if(step>=7&&step<FINAL_STEP){
+    if(step>=BUS_START&&step<FINAL_STEP){
+      const npc=findBusNpc(actors[heroId].position);
+      if(npc){showDialogue(npc.lines);return;}
+      notify('Siga o marcador do corredor ou converse com a trupe.');
+    }else if(step>=7&&step<BUS_START){
       const npc=findCityNpc(actors[heroId].position);
       if(npc){showDialogue(npc.lines);return;}
       notify('Siga o marcador ou converse com os moradores da rodoviária.');
     }else notify('Siga o marcador da missão ou explore a Fazenda em busca de histórias.');
     return;
   }
+  if(step===14&&heroId!=='joao'){notify('João precisa procurar a caixa. Use TAB ou TROCAR.');return;}
+  if(step===14){openCityChoice('case');return;}
+  if(step===15&&heroId!=='crist'){notify('Crist deve identificar o cabo. Use TAB ou TROCAR.');return;}
+  if(step===15){openCityChoice('inspect');return;}
+  if(step===16&&heroId!=='joao'){notify('João deve reconectar o cabo. Use TAB ou TROCAR.');return;}
+  if(step===16){openCityChoice('connect');return;}
+  if(step===17){openCityChoice('rhythm');return;}
   if(step===8){startBike();return;}
   if(step===9){
     if(heroId!=='crist'){notify('Crist precisa conferir o comprovante da mala. Use TAB ou TROCAR.');return;}
@@ -176,7 +214,7 @@ function useTarget(){
     return;
   }
   const activeStep=step;
-  const scenes=[SCENES.wake,SCENES.radio,SCENES.ticket,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,SCENES.cityWelcome,null,null,null,SCENES.bus];
+  const scenes=[SCENES.wake,SCENES.radio,SCENES.ticket,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,SCENES.cityWelcome,null,null,null,SCENES.bus,BUS_SCENES.seat,BUS_SCENES.crew,null,null,null,null,BUS_SCENES.reveal];
   const lines=scenes[activeStep];
   if(!lines)return;
   if(activeStep===2)winSound();else tone(600,.13,'triangle',.03);
@@ -197,9 +235,10 @@ function useTarget(){
 }
 
 function openCityChoice(kind){
-  const puzzle=CITY_CHOICES[kind];
+  const puzzle=puzzleDefinition(kind);
   if(!puzzle||dialogue||lotteryOpen||choiceKind||paused)return;
   choiceKind=kind;choiceIndex=0;
+  ui.choice.querySelector('.eyebrow').textContent=kind==='rhythm'?'CAPÍTULO 02 · APRESENTAÇÃO':kind in BUS_CHOICES?'CAPÍTULO 02 · EXCURSÃO ERRADA':'CAPÍTULO 01 · RODOVIÁRIA';
   ui.choiceHeading.textContent=puzzle.heading;
   ui.choiceText.textContent=puzzle.text;
   ui.choiceButtons.replaceChildren();
@@ -223,16 +262,44 @@ function focusCityChoice(index){
 }
 function submitCityChoice(optionId){
   if(paused||!started||!choiceKind)return;
-  const kind=choiceKind,correct=checkCityAnswer(kind,optionId);
-  choiceKind=null;ui.choice.hidden=true;
-  ui.mobile.hidden=paused||!mobile;
+  const kind=choiceKind;
+  if(kind==='rhythm'){
+    const result=inputRhythm(rhythmProgress,optionId);
+    if(!result.correct){
+      tone(180,.16,'square',.025);
+      notify('Quase! Próximo movimento: '+RHYTHM_LABELS[RHYTHM_SEQUENCE[rhythmProgress]]+'. Tente outra vez.');
+      return;
+    }
+    rhythmProgress=result.progress;
+    tone([392,494,587,784][result.progress-1],.17,'triangle',.035);
+    if(result.complete){
+      choiceKind=null;ui.choice.hidden=true;ui.mobile.hidden=paused||!mobile;
+      try{localStorage.removeItem(BUS_RHYTHM_KEY);}catch{}
+      rhythmProgress=0;showDialogue(BUS_SCENES.dance,()=>advanceTo(18));
+    }else{
+      saveRhythm();
+      const puzzle=puzzleDefinition('rhythm');
+      ui.choiceHeading.textContent=puzzle.heading;ui.choiceText.textContent=puzzle.text;
+      ui.hint.textContent='Acertou! '+rhythmProgress+'/4. Próximo movimento: '+RHYTHM_LABELS[RHYTHM_SEQUENCE[rhythmProgress]];
+    }
+    return;
+  }
+  const correct=kind in CITY_CHOICES?checkCityAnswer(kind,optionId):checkBusAnswer(kind,optionId);
+  choiceKind=null;ui.choice.hidden=true;ui.mobile.hidden=paused||!mobile;
   if(correct){
     tone(640,.2,'triangle',.033);
-    const lines=kind==='bag'?SCENES.bagSolved:SCENES.routeSolved;
-    showDialogue(lines,()=>advanceTo(kind==='bag'?10:11));
+    const completed={
+      bag:{lines:SCENES.bagSolved,next:10},route:{lines:SCENES.routeSolved,next:11},
+      case:{lines:BUS_SCENES.case,next:15},inspect:{lines:BUS_SCENES.inspect,next:16},
+      connect:{lines:BUS_SCENES.connect,next:17}
+    };
+    const event=completed[kind];
+    if(event)showDialogue(event.lines,()=>advanceTo(event.next));
   }else{
     tone(194,.15,'square',.022);
-    showDialogue(kind==='bag'?SCENES.bagWrong:SCENES.routeWrong);
+    const wrong={bag:SCENES.bagWrong,route:SCENES.routeWrong,case:BUS_SCENES.caseWrong,
+      inspect:BUS_SCENES.inspectWrong,connect:BUS_SCENES.connectWrong};
+    if(wrong[kind])showDialogue(wrong[kind]);
   }
 }
 
@@ -277,11 +344,12 @@ function finishBike(){
 function togglePause(){
   if(!started||ui.end.hidden===false)return;
   paused=!paused;ui.pause.hidden=!paused;ui.mobile.hidden=paused||!!choiceKind||lotteryOpen||!mobile;
+  audio?.setBusActive?.(step>=BUS_START&&!paused);
   ui.prompt.hidden=true;
   if(paused){held.clear();walking={x:0,z:0};}
 }
 function restart(){
-  try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(MEMORY_KEY);}catch{}
+  try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(MEMORY_KEY);localStorage.removeItem(BUS_RHYTHM_KEY);}catch{}
   location.reload();
 }
 function pollGamepadActions(){
@@ -292,7 +360,7 @@ function pollGamepadActions(){
     if(down&&!prevPad[name]){
       if(name==='pause')togglePause();
       else if(!paused&&choiceKind){
-        if(name==='act')submitCityChoice(CITY_CHOICES[choiceKind].options[choiceIndex].id);
+        if(name==='act')submitCityChoice(puzzleDefinition(choiceKind).options[choiceIndex].id);
         if(name==='switch')focusCityChoice(choiceIndex+1);
       }
       else if(!paused){
@@ -365,7 +433,7 @@ function smoothAngle(a,b,dt,k){
 function snapCamera(){updateCamera(.016,true);}
 function updateCamera(dt,immediate=false){
   const p=actors[heroId].position;
-  const inside=isInsideHouse(p.x,p.z);
+  const inside=isInsideHouse(p.x,p.z)||step>=BUS_START;
   const profile=cameraRig(inside,zoom,pitch);
   const forward=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
   let dist=profile.distance;
@@ -394,8 +462,8 @@ function update(dt){
   if(!started)return;
   pollGamepadActions();
   if(paused)return;
-  if(step<=6)audio?.update(dt);
-  if(!dialogue&&!bikeEvent&&!lotteryOpen){
+  if(step<=6||step>=BUS_START)audio?.update(dt);
+  if(!dialogue&&!bikeEvent&&!lotteryOpen&&!choiceKind){
     const input=getInput(dt);
     const heading=cameraRelativeMove(input.x,input.y,yaw);
     const targetSpeed=input.run?5.25:3.45;
@@ -410,7 +478,7 @@ function update(dt){
       const interval=input.run?.30:.44;
       if(clockTime-lastStepSound>interval){
         lastStepSound=clockTime;
-        audio?.footstep?.(isInsideHouse(actors[heroId].position.x,actors[heroId].position.z));
+        audio?.footstep?.(step>=BUS_START||isInsideHouse(actors[heroId].position.x,actors[heroId].position.z));
       }
     }
     actors[heroId].userData.moving=playerVelocity;
@@ -446,10 +514,11 @@ function update(dt){
     ui.pointer.style.transform='rotate('+(-look*180/Math.PI)+'deg)';
     const close=distance<=marker.radius;
     const extra=step<=6&&!close?nearbyMemory(pos,[...memories]):null;
-    const cityNpc=step>=7&&!close?findCityNpc(pos):null;
-    ui.prompt.hidden=(!close&&!extra&&!cityNpc)||!!dialogue||!!bikeEvent||lotteryOpen||!!choiceKind;
+    const cityNpc=step>=7&&step<BUS_START&&!close?findCityNpc(pos):null;
+    const busNpc=step>=BUS_START&&!close?findBusNpc(pos):null;
+    ui.prompt.hidden=(!close&&!extra&&!cityNpc&&!busNpc)||!!dialogue||!!bikeEvent||lotteryOpen||!!choiceKind;
     ui.promptText.textContent=close?(step===8?'Atravesse com cuidado':marker.label):
-      extra?'Conhecer: '+extra.name:cityNpc?'Conversar: '+cityNpc.name:'Interagir';
+      extra?'Conhecer: '+extra.name:cityNpc?'Conversar: '+cityNpc.name:busNpc?'Conversar: '+busNpc.name:'Interagir';
   }else ui.prompt.hidden=true;
   updateCamera(dt);
 }
@@ -469,7 +538,7 @@ function start(){
   if(started)return;
   createAudio();el('startBtn').blur();
   const data=readSave();step=data.step;packing=normalizePacking(data.packing);
-  memories=readMemories();
+  memories=readMemories();rhythmProgress=step===17?readRhythm():0;
   if(step===FINAL_STEP){step=0;packing=[];writeSave();}
   const spawn=step===0?{x:-15.5,z:-14.65}:
     step===1?{x:-12,z:-10.5}:
@@ -479,15 +548,18 @@ function start(){
     step===7?{x:49,z:21}:
     step===8?{x:62,z:19.2}:
     step===9?{x:79,z:2.7}:
-    step===10?{x:71,z:2.0}:{x:91,z:2.5};
+    step===10?{x:71,z:2.0}:
+    step===11?{x:91,z:2.5}:{x:BUS_SPAWN.x,z:BUS_SPAWN.z};
   actors.joao.position.set(spawn.x,0,spawn.z);
-  actors.crist.position.set(spawn.x+1.3,0,spawn.z+0.5);
+  actors.crist.position.set(spawn.x+(step>=BUS_START?.85:1.3),0,spawn.z+(step>=BUS_START?-1.2:.5));
   setHero(data.hero,true);started=true;paused=false;
+  if(step>=BUS_START){yaw=1.4;zoom=6.4;}
   walking={x:0,z:0};
   ui.start.hidden=true;ui.loading.hidden=true;ui.hud.hidden=false;ui.mobile.hidden=!mobile;
   updateMission();snapCamera();
   if(step===0)showDialogue(INTRO,()=>notify('Caminhe até o café dentro da casa para começar o dia.'));
   else if(step===7)notify('Bem-vindos à cidade! Procure o painel de informações da praça.');
+  else if(step===BUS_START)notify('Vocês estão dentro da Excursão Estelar. Encontre um lugar no corredor.');
   else notify('Progresso recuperado: '+getQuest(step).title);
   ui.soundBtn.textContent=soundEnabled?'♪':'×';
   ui.soundBtn.setAttribute('aria-label',soundEnabled?'Desativar som':'Ativar som');
@@ -503,11 +575,11 @@ function bindInputs(){
     if(choiceKind&&!paused){
       const numbers={Digit1:0,Digit2:1,Digit3:2};
       if(Object.hasOwn(numbers,e.code)){
-        submitCityChoice(CITY_CHOICES[choiceKind].options[numbers[e.code]].id);return;
+        submitCityChoice(puzzleDefinition(choiceKind).options[numbers[e.code]].id);return;
       }
       if(e.code==='ArrowRight'||e.code==='ArrowDown'||e.code==='Tab'){focusCityChoice(choiceIndex+1);return;}
       if(e.code==='ArrowLeft'||e.code==='ArrowUp'){focusCityChoice(choiceIndex-1);return;}
-      if(e.code==='KeyE'||e.code==='Enter'||e.code==='Space'){submitCityChoice(CITY_CHOICES[choiceKind].options[choiceIndex].id);return;}
+      if(e.code==='KeyE'||e.code==='Enter'||e.code==='Space'){submitCityChoice(puzzleDefinition(choiceKind).options[choiceIndex].id);return;}
       return;
     }
     if(!started||paused)return;
@@ -587,6 +659,9 @@ function setup(){
     }
   }
   setHero('joao',true);world.setTarget('wake');
+  const savedProgress=readSave();
+  el('startBtn').textContent=savedProgress.step===FINAL_STEP?'JOGAR NOVAMENTE':
+    savedProgress.step>0?'CONTINUAR A AVENTURA':'COMEÇAR A AVENTURA';
   onResize();bindInputs();snapCamera();
   ui.loading.hidden=true;ui.debug.hidden=!DEBUG;
   ui.canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fatal(new Error('O contexto WebGL foi perdido. Recarregue a página para continuar.'));});

@@ -1,6 +1,7 @@
 # Capítulo 1 — A Rodoviária
 
 **Versão:** v0.2.0 — primeira implementação detalhada.
+**Continuidade:** a versão v0.3.0 acrescentou a Excursão Errada. O MD detalhado do capítulo seguinte está em `FASE-03-EXCURSAO-ERRADA.md`; o conteúdo da Rodoviária permanece.
 **Documento-base:** \`JOAO_E_CRIST_PROPOSTA_3D.md\`, capítulos 1 e 8.
 **Política de produção:** toda a Fazenda, o incidente da bicicleta, o ônibus errado e o prólogo anterior foram preservados. Esta revisão **amplia** a cidade; não inicia ainda a excursão dentro do ônibus.
 

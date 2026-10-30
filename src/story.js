@@ -1,3 +1,5 @@
+import {BUS_QUESTS} from './bus-state.js';
+
 export const QUESTS=[
   {id:'wake',title:'Acorde e explore a casa',hint:'Use WASD, setas ou o analógico para caminhar até o café. Arraste a tela para olhar.'},
   {id:'radio',title:'Ouça o sorteio no rádio',hint:'O rádio está perto da varanda. Ouça o anúncio das dezenas premiadas.'},
@@ -11,7 +13,8 @@ export const QUESTS=[
   {id:'cityBag',title:'Recupere a mala certa',hint:'A bagagem foi parar no carrinho do carregador. Troque para Crist e compare a etiqueta do comprovante.'},
   {id:'cityClerk',title:'Confira o portão das passagens',hint:'Com Crist, examine as passagens no guichê e encontre o portão correto para o aeroporto.'},
   {id:'bus',title:'Encontre João e embarque na excursão',hint:'O ônibus roxo está no terminal. João quer entrar antes de ouvir o aviso completo.'},
-  {id:'done',title:'Rodoviária concluída!',hint:'Próxima parada: a excursão errada.'}
+  ...BUS_QUESTS,
+  {id:'done',title:'Excursão Errada concluída!',hint:'A amizade dos novos companheiros levará João e Crist ao próximo capítulo.'}
 ];
 // Resultado inteiramente fictício, usado só no roteiro.
 export const LOTTERY_NUMBERS=Object.freeze([3,11,18,27,42,56]);
@@ -129,8 +132,8 @@ export function nextPackingTarget(value){
   const done=new Set(normalizePacking(value));
   return PACKING_ITEMS.find(item=>!done.has(item.id))?.id||'suitcase';
 }
-export const SAVE_VERSION=3;
-export const FINAL_STEP=12;
+export const SAVE_VERSION=4;
+export const FINAL_STEP=19;
 export function getPackingProgress(value){return normalizePacking(value).length;}
 export function canUsePackingItem(id,hero){
   if(id==='suitcase')return hero==='joao';
@@ -139,24 +142,23 @@ export function canUsePackingItem(id,hero){
 export function getQuest(step){
   return QUESTS[Math.min(FINAL_STEP,Math.max(0,Number.isFinite(Number(step))?Math.floor(Number(step)):0))];
 }
-// A edição 3D preserva a mesma chave de localStorage para migrar progresso.
-// v1 antiga: bilhete, rádio, conversa, malas, despedida, portão, ciclista, ônibus, fim.
-// v2: despertar, rádio, bilhete, conversa, malas, despedida, portão, ciclista, ônibus, fim.
-// v3: acrescenta praça, bagagem e guichê, sem retirar os episódios anteriores.
+// v4 apenas acrescenta o interior da excursão. A mesma chave do save 3D
+// permanece; os passos v1/v2/v3 são migrados sem perder itens já coletados.
 export function validateSave(raw){
   const fallback={version:SAVE_VERSION,step:0,hero:'joao',packing:[]};
-  if(!raw||typeof raw!=='object'||![1,2,SAVE_VERSION].includes(raw.version))return fallback;
-  const value=Number(raw.step);
-  const index=Number.isFinite(value)?Math.floor(value):0;
+  if(!raw||typeof raw!=='object'||![1,2,3,SAVE_VERSION].includes(raw.version))return fallback;
+  const value=Number(raw.step),index=Number.isFinite(value)?Math.floor(value):0;
   let step;
   if(raw.version===1){
-    // Antes da ampliação, "cidade" era step 6 e "ônibus" step 7.
     const v2=[0,2,3,4,5,6,7,8,9][Math.max(0,Math.min(8,index))];
-    step=[0,1,2,3,4,5,6,7,9,12][v2];
+    const v3=[0,1,2,3,4,5,6,7,9,12][v2];
+    step=v3===12?12:v3;
   }else if(raw.version===2){
-    // Quem já enfrentou o ciclista continua pela recuperação da mala;
-    // quem estava chegando à cidade conhece a praça primeiro.
-    step=[0,1,2,3,4,5,6,7,9,12][Math.max(0,Math.min(9,index))];
+    const v3=[0,1,2,3,4,5,6,7,9,12][Math.max(0,Math.min(9,index))];
+    step=v3===12?12:v3;
+  }else if(raw.version===3){
+    // O encerramento antigo (12) vira a entrada para o novo ônibus jogável.
+    step=Math.max(0,Math.min(12,index));
   }else step=Math.max(0,Math.min(FINAL_STEP,index));
   const hero=raw.hero==='crist'?'crist':'joao';
   const packing=step>4?PACKING_ITEMS.map(item=>item.id):normalizePacking(raw.packing);

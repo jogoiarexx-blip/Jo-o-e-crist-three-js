@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.2.0 — Capítulo 1: cidade e rodoviária jogáveis).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Primeiro protótipo jogável (v0.3.0 — Capítulo 2: Excursão Errada jogável, Fazenda e Rodoviária preservadas).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -11,6 +11,22 @@ https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 **Celular:** analógico à esquerda, botões AÇÃO / TROCAR / ESQUIVAR, arrastar a tela gira a câmera.
 
 **Gamepad:** analógico esquerdo move, direito gira a câmera, A interage, B esquiva, Y troca personagem, Start pausa (diálogos e bicicleta estão acessíveis por teclado/touch; integração completa do gamepad seguirá).
+
+## Capítulo 2 — A Excursão Errada (v0.3.0)
+
+Conforme o [documento de direção narrativa](JOAO_E_CRIST_PROPOSTA_3D.md), **a Excursão Errada foi ampliada sem remover nenhuma missão anterior**.
+
+- Interior de ônibus jogável: corredor, fileiras de bancos, teto ocultável, bagageiros, três caixas com etiquetas, mesa de som, microfone e espaço para apresentação.
+- Três artistas low poly e interativos: Luzia (cantora), Duda (figurinista), Nico (som); motorista Beto aparece na história final.
+- Som ambiente original e leve de motor, interrompido na pausa e desligado pelo controle geral de áudio.
+- Encontrar lugar, conhecer a trupe e recuperar a caixa preta com estrela amarela.
+- Crist identifica o cabo azul; João o conecta na entrada MIC.
+- Minijogo musical de **quatro ações originais** (palmas, passo, giro, palmas); erros recuperáveis, sem cronômetro punitivo.
+- Controles de escolha por teclado, toque e gamepad; progresso parcial de ritmo salvo.
+- Descoberta do ônibus errado, revelação do destino e gancho para Aeroporto dos Perdidos.
+- Saves v1, v2 e v3 migram para v4. Quem encerrou a Rodoviária pode continuar diretamente no ônibus.
+- Novo documento de implementação e QA: [FASE-03-EXCURSAO-ERRADA.md](FASE-03-EXCURSAO-ERRADA.md).
+- Testes automatizados incluem geometria do interior, objetivos, respostas e continuidade dos saves. **Teste manual em navegador/Android ainda pendente.**
 
 ## Capítulo 1 — A Rodoviária (v0.2.0)
 Esta revisão, autorizada pelo usuário após a Fazenda, amplia **sem retirar** as cenas anteriores:
@@ -118,4 +134,4 @@ A prioridade atual, por solicitação explícita, é **Capítulo 1 — A Rodovi�
 
 ## Próximas prioridades
 
-**Validar a Rodoviária do início ao fim** e melhorar a sinalização, os três NPCs, as interações e o desempenho em Android. Depois, com o capítulo aprovado, construir o interior do ônibus e a Excursão Errada. Manter a Fazenda e o jogo 2D sem alterações regressivas.
+**Validar em jogo a Excursão Errada de ponta a ponta**, incluindo câmera, colisões, diálogo, troca João/Crist, minijogo, touch, gamepad e FPS no Android. A seguir, depois de validar a versão 0.3.0, começar o Aeroporto dos Perdidos. Preservar sempre a Fazenda, a Rodoviária e a edição 2D.
