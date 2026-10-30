@@ -20,7 +20,12 @@ export function createElder(id){
   const head=new THREE.Group();head.position.y=.8;body.add(head);
   const face=sphere(head,.38,joao?skin:skin2,0,0,.02);face.scale.set(.98,1.05,.92);
   const nose=sphere(head,.135,joao?skin:skin2,0,-.05,.38,);nose.scale.set(.85,.85,1.2);
-  for(const x of [-.15,.15]){sphere(head,.05,material('#29221d'),x,.085,.35);roundedBox(head,.13,.025,.045,material('#5e5449'),x,.175,.345);}
+  const eyes=[];
+  for(const x of [-.15,.15]){
+    eyes.push(sphere(head,.05,material('#29221d'),x,.085,.35));
+    roundedBox(head,.13,.025,.045,material('#5e5449'),x,.175,.345);
+  }
+  const mouth=roundedBox(head,.17,.04,.04,material('#74463a'),0,-.22,.365);
   if(joao){
     const moustache=material('#eee0c1');
     sphere(head,.128,moustache,-.12,-.17,.35).scale.set(1,.5,.6);
@@ -51,14 +56,41 @@ export function createElder(id){
   }
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(.6,18),new THREE.MeshBasicMaterial({color:'#172a26',transparent:true,opacity:.2,depthWrite:false}));
   shadow.rotation.x=-Math.PI/2;shadow.position.y=.018;root.add(shadow);
-  root.userData={id,arms,legs,head,body,shadow,moving:0,phase:0};
+  root.userData={id,arms,legs,head,body,shadow,eyes,mouth,moving:0,phase:0,gesture:'',gestureTime:0};
   return root;
+}
+export function gestureElder(root,gesture='talk',duration=1.6){
+  if(!root)return;
+  root.userData.gesture=gesture;
+  root.userData.gestureTime=duration;
 }
 export function animateElder(root,dt,speed,time){
   if(!root)return;const d=root.userData;d.phase+=dt*(speed>.1?8.4+speed*.45:2.5);
   const sway=Math.sin(d.phase)*Math.min(.57,speed*.12);
   d.legs[0].rotation.x=sway;d.legs[1].rotation.x=-sway;
-  d.arms[0].rotation.x=-sway*.65;d.arms[1].rotation.x=sway*.65;
-  d.body.rotation.z=Math.sin(d.phase*.52)*.025;d.head.rotation.y=Math.sin(time*.7+(d.id==='joao'?0:1))*0.055;
+  d.gestureTime=Math.max(0,d.gestureTime-dt);
+  if(d.gestureTime<=0)d.gesture='';
+  let left=-sway*.65,right=sway*.65;
+  if(d.gesture==='talk'){
+    left=-.35+Math.sin(time*8.4)*.22;
+    right=-.26+Math.sin(time*7.1+1)*.2;
+  }else if(d.gesture==='celebrate'){
+    left=-2.0+Math.sin(time*8)*.15;
+    right=-2.0-Math.sin(time*8)*.15;
+  }else if(d.gesture==='shrug'){
+    left=-1.05;right=-.52;
+  }else if(d.gesture==='pet'){
+    left=.52;right=.24;
+  }
+  const gain=1-Math.exp(-dt*11);
+  d.arms[0].rotation.x+=(left-d.arms[0].rotation.x)*gain;
+  d.arms[1].rotation.x+=(right-d.arms[1].rotation.x)*gain;
+  d.body.rotation.z=Math.sin(d.phase*.52)*.025;
+  d.head.rotation.y=Math.sin(time*.7+(d.id==='joao'?0:1))*.055+(d.gesture==='shrug'?.09:0);
   d.body.position.y=1.27+(speed>.2?Math.abs(Math.sin(d.phase))*.055:Math.sin(time*2.1)*.017);
+  // Piscar rápido sem criar geometrias novas a cada frame.
+  const blink=Math.abs(Math.sin(time*.83+(d.id==='joao'?.7:2.8)));
+  const scale=blink>.993?.08:1;
+  for(const eye of d.eyes)eye.scale.y=scale;
+  d.mouth.scale.y=d.gesture==='talk'?(1.2+Math.abs(Math.sin(time*9))*2.2):1;
 }

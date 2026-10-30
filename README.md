@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.1.4 — abertura ampliada da Fazenda, sem remover conteúdo).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Primeiro protótipo jogável (v0.1.5 — câmera interna, gestos e exploração opcional).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -73,6 +73,14 @@ A prioridade atual é **Fase 1 — Fazenda**. Não estamos expandindo as demais 
 - Arrastar a câmera ou usar analógico direito agora gira o olhar no mesmo sentido do comando; A/D e os analógicos seguem os lados da câmera. Testes de movimento, acessibilidade, entrada e porteira.
 - Companheiro reagrupa quando alguém cruza de fora para dentro da casa sem atravessar paredes.
 - **A rodoviária e o ônibus não foram modificados.** Ainda pendente verificar gameplay real no navegador, animações e desempenho.
+
+### Evolução 0.1.5 — polimento sem cortar fases
+- **Câmera adaptativa dentro da casa:** aproxima e baixa a perspectiva, verifica paredes em 16 amostras no trajeto e mantém o comportamento exterior quando o jogador sai.
+- **Gestos e expressões provisórios em João e Crist:** braços reagem a fala, comemoração, dúvida e despedida; olhos piscam e boca abre durante diálogos.
+- **Três lembranças opcionais na Fazenda:** retrato antigo da dupla dentro da casa, poço e galinhas com conversas engraçadas. Não bloqueiam nenhuma missão e são salvas separadamente.
+- **Poço recolocado dentro do perímetro rural** para ficar acessível antes da saída.
+- Testes novos para aproximação de câmera, conteúdo opcional e persistência/validação das lembranças. Os testes não substituem sessão no navegador real.
+- Preservados todos os objetivos anteriores e a continuação da cidade, bicicleta, rodoviária e ônibus.
 
 ### Evolução 0.1.4 — ampliação, sem cortes
 - Começo inédito: João acorda **dentro da casa**, pode aprender a andar e interagir com o café.

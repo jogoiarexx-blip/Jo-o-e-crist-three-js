@@ -4,7 +4,9 @@ import {createRuralAudio} from './audio.js';
 import {isBlocked} from './collision.js';
 import {cameraRelativeMove,rotateCameraRight} from './controls.js';
 import {isInsideHouse,FARM_HOUSE} from './farm-layout.js';
-import {createElder,animateElder} from './characters.js';
+import {FARM_MEMORIES,nearbyMemory,normalizeMemories} from './farm-memories.js';
+import {cameraRig} from './camera-logic.js';
+import {createElder,animateElder,gestureElder} from './characters.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
 const el=id=>document.getElementById(id);
@@ -15,6 +17,7 @@ const ui={canvas:el('game'),loading:el('loading'),hud:el('hud'),mission:el('miss
   pause:el('pauseScreen'),end:el('endScreen'),mobile:el('mobileControls'),
   event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText'),lottery:el('lotteryPanel'),lotteryButton:el('lotteryButton'),lotteryReveal:el('lotteryReveal'),soundBtn:el('soundBtn')};
 const SAVE_KEY='joaoCrist3DSave_v1';
+const MEMORY_KEY='joaoCrist3DFarmMemories_v1';
 const DEBUG=new URLSearchParams(location.search).has('debug');
 let renderer,scene,camera,world,actors,heroId='joao',step=0,packing=[],started=false,paused=false;
 let yaw=1.12,pitch=.48,zoom=8.2,clockTime=0,lastFrame=0,toastTimer=0;
@@ -24,6 +27,15 @@ const SOUND_KEY='joaoCrist3DSound_v1';
 let soundEnabled=true;
 try{soundEnabled=localStorage.getItem(SOUND_KEY)!=='off';}catch{}
 const held=new Set(),stick={x:0,y:0,id:null};
+let memories=new Set();
+function readMemories(){
+  try{return new Set(normalizeMemories(JSON.parse(localStorage.getItem(MEMORY_KEY)||'[]')));}
+  catch{return new Set();}
+}
+function saveMemories(){
+  try{localStorage.setItem(MEMORY_KEY,JSON.stringify([...memories]));}
+  catch{notify('O navegador não conseguiu salvar as lembranças opcionais.');}
+}
 const clamp=(a,min,max)=>Math.max(min,Math.min(max,a));
 const smooth=(current,target,dt,k)=>current+(target-current)*(1-Math.exp(-k*dt));
 const tempForward=new THREE.Vector3(),tempMove=new THREE.Vector3();
@@ -88,6 +100,13 @@ function displayDialogueLine(){
   if(!dialogue)return;
   const line=dialogue.lines[dialogue.index];ui.speaker.textContent=line[0];ui.dialogText.textContent=line[1];
   ui.dialogCount.textContent=(dialogue.index+1)+' / '+dialogue.lines.length;tone(315,.065,'sine',.017);
+  const who=line[0]==='JOÃO'?'joao':line[0]==='CRIST'?'crist':null;
+  if(who&&actors?.[who]){
+    const mood=/ganh|Vegas|consegu|rica|pr[oô]mio|viajante/i.test(line[1])?'celebrate':
+      /Pantera|menina|lembran[cç]a/i.test(line[1])?'pet':
+      /ué|uai|calma|como assim|pera[ií]/i.test(line[1])?'shrug':'talk';
+    gestureElder(actors[who],mood,2.5);
+  }
 }
 function nextDialogue(){
   if(!dialogue||paused)return;
@@ -106,7 +125,17 @@ function useTarget(){
   if(dialogue){nextDialogue();return;}
   if(bikeEvent){dodge();return;}
   const target=nearTarget();
-  if(!target){notify('Aproxime-se do marcador dourado para interagir.');return;}
+  if(!target){
+    const extra=step<=6?nearbyMemory(actors[heroId].position,[...memories]):null;
+    if(extra){
+      memories.add(extra.id);saveMemories();
+      tone(480,.13,'triangle',.028);
+      showDialogue(extra.lines,()=>notify('Lembrança da Fazenda: '+memories.size+'/'+FARM_MEMORIES.length+'.'));
+      return;
+    }
+    notify('Siga o marcador da missão ou explore a Fazenda em busca de histórias.');
+    return;
+  }
   if(step===7){startBike();return;}
   if(step===2&&!lotteryAccepted){openLottery();return;}
   if(step===4&&!canUsePackingItem(target.id,heroId)){
@@ -193,7 +222,7 @@ function togglePause(){
   if(paused)held.clear();
 }
 function restart(){
-  try{localStorage.removeItem(SAVE_KEY);}catch{}
+  try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(MEMORY_KEY);}catch{}
   location.reload();
 }
 function pollGamepadActions(){
@@ -269,21 +298,27 @@ function smoothAngle(a,b,dt,k){
 function snapCamera(){updateCamera(.016,true);}
 function updateCamera(dt,immediate=false){
   const p=actors[heroId].position;
+  const inside=isInsideHouse(p.x,p.z);
+  const profile=cameraRig(inside,zoom,pitch);
   const forward=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
-  let dist=zoom;
+  let dist=profile.distance;
   const focus=p.clone().add(new THREE.Vector3(0,1.35,0));
-  // Camera collision with house/shop volumes: shorten distance rather than looking through walls.
-  for(let i=1;i<=12;i++){
-    const s=i/12;
-    const cx=focus.x-forward.x*zoom*s,cz=focus.z-forward.z*zoom*s;
-    const cy=focus.y+(3.1+pitch*5)*s;
-    if(blocked(cx,cz,.18,cy)){dist=Math.min(dist,Math.max(2.3,zoom*((i-1)/12)));break;}
+  // O teto desaparece no interior; encurtar a distância quando a câmera alcança uma parede.
+  for(let i=1;i<=16;i++){
+    const u=i/16;
+    const cx=focus.x-forward.x*profile.distance*u;
+    const cz=focus.z-forward.z*profile.distance*u;
+    const cy=focus.y+profile.lift*u;
+    if(blocked(cx,cz,.16,cy)){
+      dist=Math.min(dist,Math.max(profile.minDistance,profile.distance*(i-1)/16));
+      break;
+    }
   }
   const wanted=focus.clone().addScaledVector(forward,-dist);
-  wanted.y+=3.1+pitch*5;
-  const look=focus.clone().addScaledVector(forward,1.8);
-  // Encurta imediatamente ao tocar num edifício para evitar oclusão de câmera.
-  camera.position.lerp(wanted,(immediate||dist<zoom-.01)?1:1-Math.exp(-dt*5.8));
+  wanted.y+=profile.lift;
+  const look=focus.clone().addScaledVector(forward,profile.ahead);
+  const close=dist<profile.distance-.01;
+  camera.position.lerp(wanted,(immediate||close)?1:1-Math.exp(-dt*(inside?7.5:5.8)));
   camera.lookAt(look);
 }
 function update(dt){
@@ -333,8 +368,10 @@ function update(dt){
     const look=Math.atan2(marker.point.x-pos.x,marker.point.z-pos.z)-yaw;
     ui.pointer.style.transform='rotate('+(-look*180/Math.PI)+'deg)';
     const close=distance<=marker.radius;
-    ui.prompt.hidden=!close||!!dialogue||!!bikeEvent||lotteryOpen;
-    ui.promptText.textContent=step===7?'Atravesse com cuidado':marker.label;
+    const extra=step<=6&&!close?nearbyMemory(pos,[...memories]):null;
+    ui.prompt.hidden=(!close&&!extra)||!!dialogue||!!bikeEvent||lotteryOpen;
+    ui.promptText.textContent=close?(step===7?'Atravesse com cuidado':marker.label):
+      extra?'Conhecer: '+extra.name:'Interagir';
   }else ui.prompt.hidden=true;
   updateCamera(dt);
 }
@@ -354,6 +391,7 @@ function start(){
   if(started)return;
   createAudio();el('startBtn').blur();
   const data=readSave();step=data.step;packing=normalizePacking(data.packing);
+  memories=readMemories();
   if(step===FINAL_STEP){step=0;packing=[];writeSave();}
   const spawn=step===0?{x:-15.5,z:-14.65}:
     step===1?{x:-12,z:-10.5}:

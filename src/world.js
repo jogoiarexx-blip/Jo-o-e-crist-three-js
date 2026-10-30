@@ -75,6 +75,18 @@ function house(scene,colliders){
   box(h,2.4,.17,2.75,mat('#d9bd8e'),-4.8,.77,-2.3);
   box(h,2.1,.14,.67,mat('#f7e8cf'),-4.8,.94,-3.2);
   box(h,1.7,1.1,.4,mat('#835f43'),-4.8,.88,-4);
+  // Retrato antigo opcional dos moradores: não é exigido para continuar.
+  const photoFrame=mat('#785331'),sepia=mat('#bfa87d');
+  box(h,2.05,1.48,.12,photoFrame,1.55,2.66,-4.27);
+  box(h,1.78,1.22,.13,sepia,1.55,2.66,-4.16);
+  for(const x of [1.14,1.91]){
+    ball(h,.26,mat('#c69570'),x,2.89,-4.045,1);
+    box(h,.55,.42,.17,mat(x<1.5?'#53694c':'#7a6043'),x,2.39,-4.045);
+  }
+  sign(h,'OS DOIS NA ROÇA',1.55,2.08,-4.00,1.66,.23,'#664b32');
+  // Detalhes domésticos: calendário e chaleira.
+  sign(h,'SEGUNDA-FEIRA',-5.7,2.5,4.44,2.05,.48,'#82633e');
+  cyl(h,.24,.32,.36,mat('#8d9990'),1.05,.44,2.25,9);
   const interiorLight=new THREE.PointLight('#fce2ad',13,17,2);
   interiorLight.position.set(0,4,0);h.add(interiorLight);
   // Obstáculos com faces físicas correspondentes às paredes (não bloqueia o chão todo).
@@ -201,14 +213,14 @@ function dog(scene){
 function farmDetails(scene,colliders){
   const hay=mat('#c4a55c'),stone=mat('#a5a496'),soil=mat('#8e734f');
   // Poço rústico com água, telhado e manivela.
-  const well=new THREE.Group();well.position.set(17,0,-13);scene.add(well);
+  const well=new THREE.Group();well.position.set(8,0,-12);scene.add(well);
   cyl(well,1.28,1.34,.95,stone,0,.49,0,11);
   cyl(well,.95,.95,.08,mat('#547f86'),0,.96,0,11);
   for(const x of [-1.2,1.2])box(well,.18,3,.18,wood,x,1.64,0);
   const roof=box(well,3.7,.23,2.7,mat('#826041'),0,3.12,0);roof.rotation.z=-.09;
   cyl(well,.15,.15,2.8,wood,0,2.2,0,7).rotation.z=Math.PI/2;
   box(well,.4,.5,.4,mat('#77583f'),.2,1.43,0);
-  colliders.push({x1:15.6,x2:18.4,z1:-14.4,z2:-11.6,height:3.4});
+  colliders.push({x1:6.6,x2:9.4,z1:-13.4,z2:-10.6,height:3.4});
 
   // Fardos e canteiro enriquecem a fazenda sem atrapalhar os objetivos.
   for(const [x,z,rot] of [[-34,2,.14],[-36,3,-.11],[-33.8,3.4,0]]){

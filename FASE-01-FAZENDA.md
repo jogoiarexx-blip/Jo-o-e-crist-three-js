@@ -1,5 +1,5 @@
 # Fase 01 — A Fazenda: plano de acabamento
-**Estado da construção:** v0.1.4 — abertura ampliada preservando cidade, bicicleta, rodoviária e ônibus; **não considerada finalizada**.
+**Estado da construção:** v0.1.5 — câmera interna, gestos, descobertas extras; cidade e ônibus preservados; **não considerada finalizada**.
 
 ## Premissa
 João e Crist são dois amigos idosos que moram no interior. Após achar o bilhete e ouvir o resultado no rádio, eles descobrem que ficaram ricos e começam a preparar uma viagem para conhecer Las Vegas.
@@ -12,6 +12,15 @@ João e Crist são dois amigos idosos que moram no interior. Após achar o bilhe
 5. **Preparar as malas**: Crist confere documentos e organiza roupas, João pega a farofa e fecha a mala.
 6. **Despedir-se de Pantera**, que reage à interação.
 7. **Sair pela porteira**, concluindo a Fazenda. A continuação que já existia permanece: cidade, bicicleta, rodoviária e ônibus.
+
+## Polimento 0.1.5
+- [x] Câmera mais próxima e baixa ao explorar o interior, preservando zoom externo.
+- [x] Animações de fala, comemoração, dúvida, despedida e piscar dos olhos em modelos temporários.
+- [x] Três histórias opcionais: retrato dos dois, poço da sorte, galinhas. Progresso separado, sem impactar saves principais.
+- [x] Poço deslocado para dentro do sítio.
+- [x] Testes unitários das histórias extras e da câmera interior.
+- [ ] Testar performance e visual do movimento de câmera em navegadores móveis reais.
+- [ ] Jogar desde o despertar até o ônibus com as novas interações.
 
 ## Ampliação 0.1.4
 - [x] Adicionado despertar jogável dentro da casa com café e orientação de câmera/movimento.
