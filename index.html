@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#101d1c">
+  <meta name="description" content="João & Crist: A Viagem Mais Maluca do Mundo. Uma aventura 3D de comédia pelo interior até Las Vegas.">
+  <title>João & Crist — A Viagem Mais Maluca do Mundo</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}
+  </script>
+</head>
+<body>
+  <main id="app">
+    <canvas id="game" aria-label="Mundo 3D da aventura João e Crist"></canvas>
+    <div id="vignette" aria-hidden="true"></div>
+
+    <header id="hud" class="hud" hidden>
+      <div class="brand"><span class="brand-mark">J&C</span><span><strong>JOÃO & CRIST</strong><small>A VIAGEM MAIS MALUCA DO MUNDO</small></span></div>
+      <div class="chapter"><span id="chapter">CAPÍTULO 01</span><strong id="hero">JOÃO</strong></div>
+      <button id="pauseBtn" class="icon-button" type="button" aria-label="Pausar jogo">II</button>
+    </header>
+    <section id="mission" class="mission" hidden aria-live="polite">
+      <div class="mission-kicker">OBJETIVO ATUAL</div>
+      <div class="mission-title" id="objective">Descubra o bilhete</div>
+      <div class="mission-hint" id="hint">Explore a fazenda</div>
+      <div id="route" class="route"><span id="pointer">◆</span><span id="distance"></span></div>
+    </section>
+    <div id="prompt" class="prompt" hidden><span class="key">E</span><span id="promptText">Interagir</span></div>
+    <div id="toast" class="toast" hidden aria-live="polite"></div>
+
+    <section id="dialog" class="dialog" hidden aria-live="polite">
+      <div class="dialog-name" id="dialogSpeaker">JOÃO</div>
+      <div id="dialogText" class="dialog-text"></div>
+      <div class="dialog-footer">ENTER / TOCAR PARA CONTINUAR <span id="dialogCount"></span></div>
+    </section>
+
+    <section id="eventPanel" class="event-panel" hidden>
+      <div class="event-label">CUIDADO!</div>
+      <div class="event-title">UMA BICICLETA!</div>
+      <div class="event-sub">Pressione ESPAÇO ou o botão ESQUIVAR!</div>
+      <div class="event-track"><div id="eventBar"></div></div>
+    </section>
+
+    <section id="startScreen" class="screen start-screen">
+      <div class="screen-glow"></div>
+      <div class="start-content">
+        <div class="eyebrow">UMA AVENTURA 3D DE COMÉDIA</div>
+        <h1>JOÃO <span>&</span> CRIST</h1>
+        <p class="tagline">A viagem mais maluca do mundo</p>
+        <p class="synopsis">Dois velhinhos do interior. Um bilhete premiado. O sonho de conhecer Las Vegas. O que poderia dar errado?</p>
+        <button class="primary" id="startBtn" type="button">COMEÇAR A AVENTURA <span>→</span></button>
+        <p class="control-note">WASD mover • Mouse câmera • E interagir • TAB trocar personagem • ESPAÇO esquivar</p>
+        <p class="edition">PRÓLOGO JOGÁVEL · THREE.JS · v0.1.0</p>
+      </div>
+    </section>
+
+    <section id="pauseScreen" class="screen modal-screen" hidden>
+      <div class="modal">
+        <div class="eyebrow">VIAGEM INTERROMPIDA</div>
+        <h2>PAUSADO</h2>
+        <p>A aventura continua quando você quiser.</p>
+        <button id="resumeBtn" class="primary">CONTINUAR</button>
+        <button id="restartBtn" class="secondary">REINICIAR CAPÍTULO</button>
+        <div class="control-note">WASD / SETAS: mover · E: interagir · TAB: alternar · ESC: pausa</div>
+      </div>
+    </section>
+
+    <section id="endScreen" class="screen modal-screen" hidden>
+      <div class="modal">
+        <div class="eyebrow">PRÓLOGO CONCLUÍDO</div>
+        <h2>O ÔNIBUS ERRADO</h2>
+        <p>João e Crist estão a caminho de uma viagem inesquecível. No próximo capítulo: uma excursão de artistas e uma grande confusão!</p>
+        <button id="replayBtn" class="primary">JOGAR NOVAMENTE</button>
+        <div class="control-note">A aventura continua nas próximas atualizações.</div>
+      </div>
+    </section>
+
+    <div id="mobileControls" class="mobile-controls" hidden>
+      <div class="joystick" id="joystick" aria-label="Controle de movimento"><div id="joystickThumb"></div></div>
+      <div class="mobile-actions">
+        <button type="button" id="touchSwitch" class="touch-small">TROCAR</button>
+        <button type="button" id="touchDodge" class="touch-small">ESQUIVAR</button>
+        <button type="button" id="touchAction" class="touch-main">AÇÃO</button>
+      </div>
+    </div>
+
+    <div id="loading" class="loading">PREPARANDO A VIAGEM...</div>
+    <div id="fatal" class="fatal" hidden><h2>Não foi possível iniciar o jogo 3D</h2><p id="fatalText"></p><button type="button" onclick="location.reload()">TENTAR NOVAMENTE</button></div>
+    <div id="debug" class="debug" hidden></div>
+  </main>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

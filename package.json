@@ -1,0 +1,11 @@
+{
+  "name": "joao-e-crist-3d",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Aventura 3D com Three.js, publicável diretamente no GitHub Pages",
+  "scripts": {
+    "test": "node --test tests/story.test.mjs",
+    "check": "node --check src/main.js && node --check src/world.js && node --check src/characters.js && node --check src/story.js"
+  }
+}

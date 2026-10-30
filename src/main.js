@@ -1,0 +1,372 @@
+import * as THREE from 'three';
+import {buildWorld} from './world.js';
+import {createElder,animateElder} from './characters.js';
+import {QUESTS,INTRO,SCENES,getQuest,validateSave} from './story.js';
+
+const el=id=>document.getElementById(id);
+const ui={canvas:el('game'),loading:el('loading'),hud:el('hud'),mission:el('mission'),objective:el('objective'),
+  hint:el('hint'),hero:el('hero'),distance:el('distance'),pointer:el('pointer'),prompt:el('prompt'),
+  promptText:el('promptText'),toast:el('toast'),dialog:el('dialog'),speaker:el('dialogSpeaker'),
+  dialogText:el('dialogText'),dialogCount:el('dialogCount'),start:el('startScreen'),
+  pause:el('pauseScreen'),end:el('endScreen'),mobile:el('mobileControls'),
+  event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText')};
+const SAVE_KEY='joaoCrist3DSave_v1';
+const DEBUG=new URLSearchParams(location.search).has('debug');
+let renderer,scene,camera,world,actors,heroId='joao',step=0,started=false,paused=false;
+let yaw=1.12,pitch=.48,zoom=8.2,clockTime=0,lastFrame=0,toastTimer=0;
+let dialogue=null,bikeEvent=null,actionHeld=false,prevPad={};
+let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null;
+const held=new Set(),stick={x:0,y:0,id:null};
+const clamp=(a,min,max)=>Math.max(min,Math.min(max,a));
+const smooth=(current,target,dt,k)=>current+(target-current)*(1-Math.exp(-k*dt));
+const tempForward=new THREE.Vector3(),tempRight=new THREE.Vector3(),tempMove=new THREE.Vector3();
+const mobile=matchMedia('(pointer:coarse)').matches;
+function readSave(){
+  try{return validateSave(JSON.parse(localStorage.getItem(SAVE_KEY)||'null'));}
+  catch{return validateSave(null);}
+}
+function writeSave(){
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:1,step,hero:heroId}));}
+  catch{notify('O navegador está bloqueando o salvamento local.');}
+}
+function notify(text){
+  ui.toast.textContent=text;ui.toast.hidden=false;toastTimer=3.4;
+}
+function createAudio(){if(audio)return;try{audio=new (window.AudioContext||window.webkitAudioContext)();}catch{}}
+function tone(freq=440,duration=.14,type='sine',volume=.04){
+  if(!audio)return;
+  try{if(audio.state==='suspended')audio.resume();
+    const osc=audio.createOscillator(),gain=audio.createGain(),t=audio.currentTime;
+    osc.type=type;osc.frequency.setValueAtTime(freq,t);
+    gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime(volume,t+.018);
+    gain.gain.exponentialRampToValueAtTime(.0001,t+duration);
+    osc.connect(gain);gain.connect(audio.destination);osc.start(t);osc.stop(t+duration+.02);
+  }catch{}
+}
+function winSound(){tone(392,.16,'triangle');setTimeout(()=>tone(494,.2,'triangle'),110);setTimeout(()=>tone(659,.4,'triangle'),230);}
+function setHero(id,quiet=false){
+  if(!actors||!actors[id])return;
+  heroId=id;const other=id==='joao'?'crist':'joao';
+  ui.hero.textContent=id==='joao'?'JOÃO':'CRIST';
+  if(!quiet){tone(460,.09);notify('Agora você controla '+ui.hero.textContent+'.');writeSave();}
+  actors[other].userData.isCompanion=true;actors[id].userData.isCompanion=false;
+}
+function updateMission(){
+  const q=getQuest(step);ui.objective.textContent=q.title;ui.hint.textContent=q.hint;
+  ui.mission.hidden=false;
+  world.setTarget(q.id);
+  if(step>=8){ui.mission.hidden=true;ui.prompt.hidden=true;}
+}
+function advanceTo(next){
+  step=clamp(next,0,8);writeSave();updateMission();
+  if(step===8){ui.end.hidden=false;ui.hud.hidden=true;ui.mobile.hidden=true;ui.mission.hidden=true;started=false;}
+}
+function showDialogue(lines,onFinish){
+  if(!lines||!lines.length){onFinish?.();return;}
+  dialogue={lines,index:0,finish:onFinish};ui.dialog.hidden=false;ui.prompt.hidden=true;
+  displayDialogueLine();
+}
+function displayDialogueLine(){
+  if(!dialogue)return;
+  const line=dialogue.lines[dialogue.index];ui.speaker.textContent=line[0];ui.dialogText.textContent=line[1];
+  ui.dialogCount.textContent=(dialogue.index+1)+' / '+dialogue.lines.length;tone(315,.065,'sine',.017);
+}
+function nextDialogue(){
+  if(!dialogue)return;
+  dialogue.index++;
+  if(dialogue.index<dialogue.lines.length)displayDialogueLine();
+  else{const cb=dialogue.finish;dialogue=null;ui.dialog.hidden=true;cb?.();}
+}
+function nearTarget(){
+  if(!world||!actors||step>7)return null;
+  const m=world.markers[getQuest(step).id];if(!m)return null;
+  return Math.hypot(actors[heroId].position.x-m.point.x,actors[heroId].position.z-m.point.z)<=m.radius?m:null;
+}
+function useTarget(){
+  if(dialogue){nextDialogue();return;}
+  if(paused||!started)return;
+  if(bikeEvent){dodge();return;}
+  const target=nearTarget();
+  if(!target){notify('Aproxime-se do marcador dourado para interagir.');return;}
+  if(step===6){startBike();return;}
+  const activeStep=step;
+  const scenes=[SCENES.ticket,SCENES.radio,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,null,SCENES.bus];
+  const lines=scenes[activeStep];
+  if(!lines)return;
+  if(activeStep===1)winSound();else tone(600,.13,'triangle',.03);
+  showDialogue(lines,()=>{
+    if(activeStep===5){
+      // Viagem curta, sem corredor vazio de caminhada.
+      actors[heroId].position.set(49,0,9);
+      const other=heroId==='joao'?'crist':'joao';
+      actors[other].position.set(47,0,12);
+      snapCamera();notify('Vocês chegaram à cidade.');
+    } else if(activeStep===7){
+      world.bike.visible=false;
+    }
+    advanceTo(activeStep+1);
+  });
+}
+function startBike(){
+  if(bikeEvent||dialogue)return;
+  bikeEvent={time:0,length:2.5,evaded:false,ended:false};
+  world.bike.visible=true;world.bike.position.set(68,0,-18);
+  ui.event.hidden=false;ui.prompt.hidden=true;
+  tone(900,.15,'square',.045);tone(1000,.19,'square',.02);
+}
+function dodge(){
+  if(!bikeEvent||bikeEvent.ended)return;
+  bikeEvent.evaded=true;finishBike();
+}
+function finishBike(){
+  if(!bikeEvent||bikeEvent.ended)return;
+  const good=bikeEvent.evaded;
+  bikeEvent.ended=true;bikeEvent=null;ui.event.hidden=true;
+  if(good){tone(700,.1,'triangle');notify('UFA! Desviou por pouco!');}
+  else {tone(165,.35,'sawtooth',.04);notify('Quase virou notícia no jornal!');}
+  showDialogue(good?SCENES.bikeOK:SCENES.bikeHit,()=>{world.bike.visible=false;advanceTo(7);});
+}
+function togglePause(){
+  if(!started||ui.end.hidden===false||dialogue||bikeEvent)return;
+  paused=!paused;ui.pause.hidden=!paused;ui.mobile.hidden=paused||!mobile;
+  ui.prompt.hidden=true;
+  if(paused)held.clear();
+}
+function restart(){
+  try{localStorage.removeItem(SAVE_KEY);}catch{}
+  location.reload();
+}
+function getInput(){
+  let mx=0,my=0;
+  if(held.has('KeyA')||held.has('ArrowLeft'))mx--;
+  if(held.has('KeyD')||held.has('ArrowRight'))mx++;
+  if(held.has('KeyW')||held.has('ArrowUp'))my++;
+  if(held.has('KeyS')||held.has('ArrowDown'))my--;
+  mx+=stick.x;my-=stick.y;
+  const pad=navigator.getGamepads?.()[0];
+  if(pad){
+    if(Math.abs(pad.axes[0]||0)>.18)mx+=pad.axes[0];
+    if(Math.abs(pad.axes[1]||0)>.18)my-=pad.axes[1];
+    if(Math.abs(pad.axes[2]||0)>.20)yaw-=pad.axes[2]*.028;
+    if(Math.abs(pad.axes[3]||0)>.20)pitch=clamp(pitch+pad.axes[3]*.012,.1,1.1);
+    const bindings=[[0,'act'],[1,'dodge'],[3,'switch'],[9,'pause']];
+    for(const [i,name] of bindings){
+      const down=!!pad.buttons[i]?.pressed;
+      if(down&&!prevPad[name]){
+        if(name==='act')useTarget();
+        if(name==='dodge')dodge();
+        if(name==='switch'&&started&&!dialogue&&!bikeEvent)setHero(heroId==='joao'?'crist':'joao');
+        if(name==='pause')togglePause();
+      }
+      prevPad[name]=down;
+    }
+  }
+  const len=Math.hypot(mx,my);
+  if(len>1){mx/=len;my/=len;}
+  return {x:mx,y:my,run:held.has('ShiftLeft')||held.has('ShiftRight')};
+}
+function blocked(x,z,r=.38){
+  if(x<-48||x>129||z<-43||z>46)return true;
+  for(const c of world.colliders){
+    if(x+r>c.x1&&x-r<c.x2&&z+r>c.z1&&z-r<c.z2)return true;
+  }return false;
+}
+function move(entity,vx,vz,dt){
+  const nx=entity.position.x+vx*dt,nz=entity.position.z+vz*dt;
+  if(!blocked(nx,entity.position.z))entity.position.x=nx;
+  if(!blocked(entity.position.x,nz))entity.position.z=nz;
+}
+function updateCompanion(dt){
+  const me=actors[heroId],other=actors[heroId==='joao'?'crist':'joao'];
+  const dir=tempForward.set(Math.sin(me.rotation.y),0,Math.cos(me.rotation.y));
+  const tx=me.position.x-dir.x*1.7+dir.z*.8;
+  const tz=me.position.z-dir.z*1.7-dir.x*.8;
+  const dx=tx-other.position.x,dz=tz-other.position.z,dist=Math.hypot(dx,dz);
+  if(dist>15){other.position.set(tx,0,tz);other.userData.moving=0;return;}
+  if(dist>.9){
+    const s=Math.min(dist*2,4.2);
+    move(other,dx/dist*s,dz/dist*s,dt);
+    other.rotation.y=smoothAngle(other.rotation.y,Math.atan2(dx,dz),dt,5.5);
+    other.userData.moving=s;
+  }else other.userData.moving=0;
+}
+function smoothAngle(a,b,dt,k){
+  const d=Math.atan2(Math.sin(b-a),Math.cos(b-a));
+  return a+d*(1-Math.exp(-k*dt));
+}
+function snapCamera(){updateCamera(.016,true);}
+function updateCamera(dt,immediate=false){
+  const p=actors[heroId].position;
+  const forward=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  let dist=zoom;
+  const focus=p.clone().add(new THREE.Vector3(0,1.35,0));
+  // Camera collision with house/shop volumes: shorten distance rather than looking through walls.
+  for(let i=1;i<=12;i++){
+    const s=i/12;
+    const cx=focus.x-forward.x*zoom*s,cz=focus.z-forward.z*zoom*s;
+    const cy=focus.y+(3.1+pitch*5)*s;
+    if(cy<6.65&&blocked(cx,cz,.18)){dist=Math.min(dist,Math.max(2.3,zoom*((i-1)/12)));break;}
+  }
+  const wanted=focus.clone().addScaledVector(forward,-dist);
+  wanted.y+=3.1+pitch*5;
+  const look=focus.clone().addScaledVector(forward,1.8);
+  camera.position.lerp(wanted,immediate?1:1-Math.exp(-dt*5.8));
+  camera.lookAt(look);
+}
+function update(dt){
+  clockTime+=dt;
+  if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)ui.toast.hidden=true;}
+  if(!started||paused)return;
+  if(!dialogue&&!bikeEvent){
+    const input=getInput();
+    tempForward.set(Math.sin(yaw),0,Math.cos(yaw));
+    tempRight.set(Math.cos(yaw),0,-Math.sin(yaw));
+    tempMove.copy(tempForward).multiplyScalar(input.y).addScaledVector(tempRight,input.x);
+    const len=tempMove.length();
+    if(len>.001){
+      tempMove.multiplyScalar(1/Math.max(1,len));
+      const speed=input.run?5.5:3.65;
+      move(actors[heroId],tempMove.x*speed,tempMove.z*speed,dt);
+      actors[heroId].rotation.y=smoothAngle(actors[heroId].rotation.y,Math.atan2(tempMove.x,tempMove.z),dt,11);
+      playerVelocity=speed;
+    }else playerVelocity=0;
+    actors[heroId].userData.moving=playerVelocity;
+    updateCompanion(dt);
+  }else{actors[heroId].userData.moving=0;updateCompanion(dt);}
+  for(const id of ['joao','crist'])animateElder(actors[id],dt,actors[id].userData.moving,clockTime);
+  world.update(clockTime,actors[heroId].position);
+  if(step===2){
+    const other=actors[heroId==='joao'?'crist':'joao'];
+    world.markers.crist.point.copy(other.position);
+    world.markers.crist.holder.position.x=other.position.x;
+    world.markers.crist.holder.position.z=other.position.z;
+  }
+  if(bikeEvent){
+    bikeEvent.time+=dt;
+    const t=bikeEvent.time/bikeEvent.length;
+    world.bike.position.z=-18+t*38;
+    world.bike.rotation.y=Math.sin(t*18)*.03;
+    ui.eventBar.style.transform='scaleX('+clamp(1-t,0,1)+')';
+    if(t>=1)finishBike();
+  }else if(!dialogue){
+    if(step===6&&nearTarget())startBike();
+  }
+  const marker=world.markers[getQuest(step).id];
+  if(marker&&step<8){
+    const pos=actors[heroId].position,distance=Math.hypot(pos.x-marker.point.x,pos.z-marker.point.z);
+    ui.distance.textContent=Math.ceil(distance)+' METROS';
+    const look=Math.atan2(marker.point.x-pos.x,marker.point.z-pos.z)-yaw;
+    ui.pointer.style.transform='rotate('+(-look*180/Math.PI)+'deg)';
+    const close=distance<=marker.radius;
+    ui.prompt.hidden=!close||!!dialogue||!!bikeEvent;
+    ui.promptText.textContent=step===6?'Atravesse com cuidado':marker.label;
+  }else ui.prompt.hidden=true;
+  updateCamera(dt);
+}
+function render(now){
+  requestAnimationFrame(render);
+  const elapsed=lastFrame?Math.min(.05,(now-lastFrame)/1000):.016;lastFrame=now;
+  update(elapsed);
+  if(!started&&!paused&&world){clockTime+=elapsed;for(const id of ['joao','crist'])animateElder(actors[id],elapsed,0,clockTime);world.update(clockTime,actors[heroId].position);}
+  renderer?.render(scene,camera);
+  if(DEBUG){
+    frameCounter++;
+    if(now-fpsStart>1000){fps=frameCounter*1000/(now-fpsStart||1);fpsStart=now;frameCounter=0;}
+    ui.debug.textContent='FPS: '+Math.round(fps)+' | PASSO: '+step+' | x:'+Math.round(actors[heroId].position.x)+' z:'+Math.round(actors[heroId].position.z);
+  }
+}
+function start(){
+  if(started)return;
+  createAudio();el('startBtn').blur();
+  const data=readSave();step=data.step;
+  if(step===8){step=0;writeSave();}
+  const spawn=step<=5?{x:-1.5,z:5}:step===6?{x:49,z:9}:{x:77,z:11};
+  actors.joao.position.set(spawn.x,0,spawn.z);
+  actors.crist.position.set(spawn.x+2,0,spawn.z-1);
+  setHero(data.hero,true);started=true;paused=false;
+  ui.start.hidden=true;ui.loading.hidden=true;ui.hud.hidden=false;ui.mobile.hidden=!mobile;
+  updateMission();snapCamera();
+  if(step===0)showDialogue(INTRO,()=>notify('Procure o bilhete sobre a mesa da varanda.'));
+  else notify('Progresso recuperado: '+getQuest(step).title);
+}
+function bindInputs(){
+  const actionKeys=new Set(['Space','Tab','ArrowUp','ArrowDown','ArrowLeft','ArrowRight']);
+  window.addEventListener('keydown',e=>{
+    if(actionKeys.has(e.code))e.preventDefault();
+    held.add(e.code);
+    if(e.repeat)return;
+    if(e.code==='Escape'){if(dialogue){nextDialogue();return;}togglePause();return;}
+    if(!started||paused)return;
+    if(e.code==='Tab'&&!dialogue&&!bikeEvent){setHero(heroId==='joao'?'crist':'joao');return;}
+    if(e.code==='KeyE'||e.code==='Enter'){useTarget();return;}
+    if(e.code==='Space'){dodge();}
+  });
+  window.addEventListener('keyup',e=>held.delete(e.code));
+  window.addEventListener('blur',()=>{held.clear();stick.x=stick.y=0;if(started&&!paused&&!dialogue&&!bikeEvent)togglePause();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){held.clear();stick.x=stick.y=0;if(started&&!paused&&!dialogue&&!bikeEvent)togglePause();}});
+  ui.dialog.addEventListener('click',nextDialogue);
+  el('startBtn').addEventListener('click',start);
+  el('pauseBtn').addEventListener('click',togglePause);
+  el('resumeBtn').addEventListener('click',togglePause);
+  el('restartBtn').addEventListener('click',restart);
+  el('replayBtn').addEventListener('click',restart);
+  el('touchAction').addEventListener('pointerdown',e=>{e.preventDefault();useTarget();});
+  el('touchSwitch').addEventListener('pointerdown',e=>{e.preventDefault();if(started&&!dialogue&&!bikeEvent)setHero(heroId==='joao'?'crist':'joao');});
+  el('touchDodge').addEventListener('pointerdown',e=>{e.preventDefault();dodge();});
+  let cameraPointer=null,lastX=0,lastY=0;
+  ui.canvas.addEventListener('pointerdown',e=>{if(!started||paused||dialogue)return;cameraPointer=e.pointerId;lastX=e.clientX;lastY=e.clientY;ui.canvas.setPointerCapture(e.pointerId);});
+  ui.canvas.addEventListener('pointermove',e=>{
+    if(e.pointerId!==cameraPointer)return;
+    const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;
+    yaw-=dx*.0052;pitch=clamp(pitch+dy*.004,.1,1.1);
+  });
+  const resetCameraPointer=e=>{if(e.pointerId===cameraPointer)cameraPointer=null;};
+  ui.canvas.addEventListener('pointerup',resetCameraPointer);
+  ui.canvas.addEventListener('pointercancel',resetCameraPointer);
+  ui.canvas.addEventListener('wheel',e=>{zoom=clamp(zoom+Math.sign(e.deltaY)*.8,5.2,12);e.preventDefault();},{passive:false});
+  const pad=el('joystick'),thumb=el('joystickThumb');
+  const padMove=e=>{
+    if(stick.id!==e.pointerId)return;
+    const r=pad.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+    let dx=e.clientX-cx,dy=e.clientY-cy;
+    const max=r.width*.36,l=Math.hypot(dx,dy);
+    if(l>max){dx=dx/l*max;dy=dy/l*max;}
+    stick.x=dx/max;stick.y=dy/max;
+    thumb.style.transform='translate(calc(-50% + '+dx+'px),calc(-50% + '+dy+'px))';
+    e.preventDefault();
+  };
+  pad.addEventListener('pointerdown',e=>{if(stick.id!==null)return;stick.id=e.pointerId;pad.setPointerCapture(e.pointerId);padMove(e);});
+  pad.addEventListener('pointermove',padMove);
+  const padEnd=e=>{if(stick.id!==e.pointerId)return;stick.id=null;stick.x=stick.y=0;thumb.style.transform='translate(-50%,-50%)';};
+  pad.addEventListener('pointerup',padEnd);pad.addEventListener('pointercancel',padEnd);
+  window.addEventListener('resize',onResize);
+}
+function onResize(){
+  if(!renderer||!camera)return;
+  const w=window.innerWidth,h=window.innerHeight;
+  renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+function fatal(error){
+  console.error('[João & Crist 3D]',error);
+  ui.loading.hidden=true;ui.start.hidden=true;
+  ui.fatal.hidden=false;ui.fatalText.textContent=String(error?.message||error);
+}
+function setup(){
+  renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:!mobile,alpha:false,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,mobile?1.3:1.8));
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.16;
+  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(64,innerWidth/innerHeight,.1,240);
+  world=buildWorld(scene);
+  actors={joao:createElder('joao'),crist:createElder('crist')};
+  actors.joao.position.set(-1.5,0,5);actors.crist.position.set(1.5,0,3);
+  actors.joao.rotation.y=actors.crist.rotation.y=1.1;
+  scene.add(actors.joao,actors.crist);
+  setHero('joao',true);world.setTarget('ticket');
+  onResize();bindInputs();snapCamera();
+  ui.loading.hidden=true;ui.debug.hidden=!DEBUG;
+  ui.canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fatal(new Error('O contexto WebGL foi perdido. Recarregue a página para continuar.'));});
+  requestAnimationFrame(render);
+}
+try{setup();}catch(err){fatal(err);}
