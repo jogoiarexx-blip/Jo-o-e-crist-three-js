@@ -295,6 +295,13 @@ export function buildWorld(scene){
   // Bench in town
   box(scene,3.2,.19,.7,wood,78,.74,1.5);for(const x of [77,79])box(scene,.15,.76,.2,dark,x,.38,1.5);
   const bus=makeBus(scene);const pantera=dog(scene);const bike=makeBike(scene);
+  // Fase 1 ampliada: café da manhã jogável dentro da casa, sem mexer no restante do mundo.
+  const coffeeTable=box(scene,1.35,.16,1.05,wood,-15.5,.87,-11.25);
+  for(const x of [-16.0,-15.0])for(const z of [-11.65,-10.85])
+    box(scene,.12,.80,.12,wood,x,.40,z);
+  const cup=cyl(scene,.19,.16,.34,mat('#e6eee2'),-15.5,1.14,-11.25,10);
+  const coffee=cyl(scene,.145,.145,.02,mat('#513324'),-15.5,1.32,-11.25,10);
+  colliders.push({x1:-16.22,x2:-14.78,z1:-11.85,z2:-10.65,height:1.0,tag:'coffee-table'});
   // Farm props, all targets remain visible but glow only when active.
   const table=box(scene,2.6,.18,1.3,wood,-4.6,1.03,2.3);
   colliders.push({x1:-5.95,x2:-3.25,z1:1.6,z2:3.0,height:1.2});
@@ -340,7 +347,8 @@ export function buildWorld(scene){
     const beacon=new THREE.Mesh(new THREE.OctahedronGeometry(.27,0),new THREE.MeshBasicMaterial({color:'#fff0a5'}));beacon.position.y=2.35;holder.add(beacon);
     holder.visible=false;markers[id]={id,point:new THREE.Vector3(x,0,z),radius,label,holder,ring,beacon};
   };
-  addMarker('ticket',-4.6,2.3,'Conferir bilhete',3.1);
+  addMarker('wake',-15.5,-11.25,'Tomar café e começar o dia',2.25);
+  addMarker('ticket',-4.6,2.3,'Encontrar bilhete da loteria',3.1);
   addMarker('radio',-10.5,1,'Ligar o rádio',2.6);
   addMarker('crist',1.5,0,'Conversar com Crist',3.2);
   addMarker('documents',FARM_OBJECTS.documents.x,FARM_OBJECTS.documents.z,'Pegar documentos na casa',2.2);

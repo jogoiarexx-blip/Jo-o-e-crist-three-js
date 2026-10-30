@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.1.3 — interior jogável, porteira de fazenda e controles corrigidos).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Primeiro protótipo jogável (v0.1.4 — abertura ampliada da Fazenda, sem remover conteúdo).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -73,6 +73,16 @@ A prioridade atual é **Fase 1 — Fazenda**. Não estamos expandindo as demais 
 - Arrastar a câmera ou usar analógico direito agora gira o olhar no mesmo sentido do comando; A/D e os analógicos seguem os lados da câmera. Testes de movimento, acessibilidade, entrada e porteira.
 - Companheiro reagrupa quando alguém cruza de fora para dentro da casa sem atravessar paredes.
 - **A rodoviária e o ônibus não foram modificados.** Ainda pendente verificar gameplay real no navegador, animações e desempenho.
+
+### Evolução 0.1.4 — ampliação, sem cortes
+- Começo inédito: João acorda **dentro da casa**, pode aprender a andar e interagir com o café.
+- Sequência ajustada: ouvir os números pelo rádio, **depois** procurar o bilhete na varanda e comparar visualmente as dezenas.
+- Conversa ampliada entre João e Crist: os dois confirmam a notícia e decidem ir a Las Vegas.
+- Preparativos com papéis distintos: **Crist** confere documentos e separa roupas, **João** cuida da farofa e fecha a mala. Troca com TAB/TROCAR/Y.
+- Despedida de Pantera e porteira continuam; a saída conclui a história da Fazenda.
+- **Todo o conteúdo já existente continua jogável:** chegada à cidade, quase atropelamento da bicicleta, rodoviária e ônibus errado. São a continuação do prólogo, não foram retirados.
+- Saves v1 são migrados para v2, mantendo posição na narrativa e itens guardados. Agora há testes também de colisões e layouts na execução automática.
+- Ainda necessário: jogar integralmente em navegador desktop e Android para homologar a cena.
 
 ## Próximas prioridades
 

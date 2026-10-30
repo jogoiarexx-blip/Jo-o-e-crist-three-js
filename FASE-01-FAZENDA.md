@@ -1,18 +1,29 @@
 # Fase 01 — A Fazenda: plano de acabamento
-**Estado da construção:** v0.1.3 — casa acessível, posições coerentes e porteira reconstruída; **não considerada finalizada**.
+**Estado da construção:** v0.1.4 — abertura ampliada preservando cidade, bicicleta, rodoviária e ônibus; **não considerada finalizada**.
 
 ## Premissa
 João e Crist são dois amigos idosos que moram no interior. Após achar o bilhete e ouvir o resultado no rádio, eles descobrem que ficaram ricos e começam a preparar uma viagem para conhecer Las Vegas.
 
 ## Missões de abertura que devem estar jogáveis
-1. Explorar o quintal e encontrar o bilhete físico.
-2. Interagir com o rádio para conferir o prêmio.
-3. Contar a novidade para Crist.
-4. Preparar as malas: localizar **documentos, roupas e farofa** em três pontos diferentes; completar coleta e retornar às malas.
-5. Despedir-se de Pantera, que reage à interação.
-6. Chegar à porteira. A partida seguinte deve preservar o progresso.
+1. **Acordar dentro da casa e aprender os controles** caminhando até o café.
+2. **Ouvir as dezenas no rádio** e descobrir que talvez tenham ganhado.
+3. **Encontrar o bilhete na varanda e conferir visualmente** o resultado anunciado.
+4. **Conversar com Crist**, confirmar o prêmio e decidir a viagem a Las Vegas.
+5. **Preparar as malas**: Crist confere documentos e organiza roupas, João pega a farofa e fecha a mala.
+6. **Despedir-se de Pantera**, que reage à interação.
+7. **Sair pela porteira**, concluindo a Fazenda. A continuação que já existia permanece: cidade, bicicleta, rodoviária e ônibus.
 
-## Entregue nesta revisão
+## Ampliação 0.1.4
+- [x] Adicionado despertar jogável dentro da casa com café e orientação de câmera/movimento.
+- [x] Rádio anuncia dezenas antes de João encontrar o bilhete.
+- [x] Conferência visual do bilhete preservada; diálogos de decisão sobre Las Vegas expandidos.
+- [x] Personagens dividem tarefas de viagem, com troca obrigatória em interações específicas.
+- [x] Despedida, porteira, cidade, bicicleta, rodoviária e ônibus **mantidos**.
+- [x] Migrar saves para versão 2, preservando capítulos existentes e itens coletados.
+- [x] Executar testes de história, geometria e controles no CI.
+- [ ] Validar no navegador a sequência completa até o ônibus e em Android real.
+
+## Entregue nas revisões anteriores
 - [x] Objetos coletáveis 3D com marcadores contextuais e diálogos individuais.
 - [x] Progresso de coleta 0/3 → 3/3 e mala bloqueada enquanto faltam itens.
 - [x] Persistência de itens coletados em save v1; recuperação de saves legados que já concluíram a mala.

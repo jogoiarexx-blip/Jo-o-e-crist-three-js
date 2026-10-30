@@ -5,7 +5,7 @@ import {isBlocked} from './collision.js';
 import {cameraRelativeMove,rotateCameraRight} from './controls.js';
 import {isInsideHouse,FARM_HOUSE} from './farm-layout.js';
 import {createElder,animateElder} from './characters.js';
-import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS} from './story.js';
+import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
 const el=id=>document.getElementById(id);
 const ui={canvas:el('game'),loading:el('loading'),hud:el('hud'),mission:el('mission'),objective:el('objective'),
@@ -33,7 +33,7 @@ function readSave(){
   catch{return validateSave(null);}
 }
 function writeSave(){
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:1,step,hero:heroId,packing:normalizePacking(packing)}));}
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:SAVE_VERSION,step,hero:heroId,packing:normalizePacking(packing)}));}
   catch{notify('O navegador está bloqueando o salvamento local.');}
 }
 function notify(text){
@@ -57,26 +57,27 @@ function setHero(id,quiet=false){
   actors[other].userData.isCompanion=true;actors[id].userData.isCompanion=false;
 }
 function activeTargetId(){
-  return step===3?nextPackingTarget(packing):getQuest(step).id;
+  return step===4?nextPackingTarget(packing):getQuest(step).id;
 }
 function updateMission(){
   const q=getQuest(step),target=activeTargetId();
   ui.objective.textContent=q.title;
   ui.hint.textContent=q.hint;
-  if(step===3){
+  if(step===4){
     const item=PACKING_ITEMS.find(candidate=>candidate.id===target);
     ui.objective.textContent='Arrume as malas — '+getPackingProgress(packing)+'/3';
-    ui.hint.textContent=item?item.hint:'Itens reunidos! Volte à mala para guardar tudo.';
+    ui.hint.textContent=item?item.hint:'Itens reunidos! Troque para João e volte à mala dentro da casa.';
   }
-  ui.mission.hidden=step>=8;
+  el('chapter').textContent=step>=7?'CAPÍTULO 02 · RODOVIÁRIA':'CAPÍTULO 01 · FAZENDA';
+  ui.mission.hidden=step>=FINAL_STEP;
   world.setTarget(target);
   world.setPacked?.(packing);
-  if(step>5)world.setGateOpen?.(true);
-  if(step>=8)ui.prompt.hidden=true;
+  if(step>6)world.setGateOpen?.(true);
+  if(step>=FINAL_STEP)ui.prompt.hidden=true;
 }
 function advanceTo(next){
-  step=clamp(next,0,8);writeSave();updateMission();
-  if(step===8){ui.end.hidden=false;ui.hud.hidden=true;ui.mobile.hidden=true;ui.mission.hidden=true;started=false;}
+  step=clamp(next,0,FINAL_STEP);writeSave();updateMission();
+  if(step===FINAL_STEP){ui.end.hidden=false;ui.hud.hidden=true;ui.mobile.hidden=true;ui.mission.hidden=true;started=false;}
 }
 function showDialogue(lines,onFinish){
   if(!lines||!lines.length){onFinish?.();return;}
@@ -95,7 +96,7 @@ function nextDialogue(){
   else{const cb=dialogue.finish;dialogue=null;ui.dialog.hidden=true;cb?.();}
 }
 function nearTarget(){
-  if(!world||!actors||step>7)return null;
+  if(!world||!actors||step>=FINAL_STEP)return null;
   const m=world.markers[activeTargetId()];if(!m)return null;
   return Math.hypot(actors[heroId].position.x-m.point.x,actors[heroId].position.z-m.point.z)<=m.radius?m:null;
 }
@@ -106,9 +107,15 @@ function useTarget(){
   if(bikeEvent){dodge();return;}
   const target=nearTarget();
   if(!target){notify('Aproxime-se do marcador dourado para interagir.');return;}
-  if(step===6){startBike();return;}
-  if(step===1&&!lotteryAccepted){openLottery();return;}
-  if(step===3&&target.id!=='suitcase'){
+  if(step===7){startBike();return;}
+  if(step===2&&!lotteryAccepted){openLottery();return;}
+  if(step===4&&!canUsePackingItem(target.id,heroId)){
+    const expected=target.id==='suitcase'?'JOÃO':target.id==='documents'||target.id==='clothes'?'CRIST':'JOÃO';
+    notify('Essa tarefa é de '+expected+'. Use TAB ou TROCAR para alternar.');
+    tone(220,.12,'triangle',.02);
+    return;
+  }
+  if(step===4&&target.id!=='suitcase'){
     if(!packing.includes(target.id)){
       packing.push(target.id);
       world.setPacked?.(packing);
@@ -122,20 +129,20 @@ function useTarget(){
     return;
   }
   const activeStep=step;
-  const scenes=[SCENES.ticket,SCENES.radio,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,null,SCENES.bus];
+  const scenes=[SCENES.wake,SCENES.radio,SCENES.ticket,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,null,SCENES.bus];
   const lines=scenes[activeStep];
   if(!lines)return;
-  if(activeStep===1)winSound();else tone(600,.13,'triangle',.03);
-  if(activeStep===4){world.reactPantera?.(clockTime);tone(330,.12,'sawtooth',.027);}
-  if(activeStep===5){world.openGate?.();tone(195,.27,'sawtooth',.023);}
+  if(activeStep===2)winSound();else tone(600,.13,'triangle',.03);
+  if(activeStep===5){world.reactPantera?.(clockTime);tone(330,.12,'sawtooth',.027);}
+  if(activeStep===6){world.openGate?.();tone(195,.27,'sawtooth',.023);}
   showDialogue(lines,()=>{
-    if(activeStep===5){
-      // Viagem curta, sem corredor vazio de caminhada.
+    if(activeStep===6){
+      // Preserva a cidade e a viagem da versão anterior, depois de concluir a Fazenda.
       actors[heroId].position.set(49,0,9);
       const other=heroId==='joao'?'crist':'joao';
       actors[other].position.set(47,0,12);
-      snapCamera();notify('Vocês chegaram à cidade.');
-    } else if(activeStep===7){
+      snapCamera();notify('Fase 1 concluída! Agora vocês seguem à rodoviária.');
+    } else if(activeStep===8){
       world.bike.visible=false;
     }
     advanceTo(activeStep+1);
@@ -177,7 +184,7 @@ function finishBike(){
   bikeEvent.ended=true;bikeEvent=null;ui.event.hidden=true;
   if(good){tone(700,.1,'triangle');notify('UFA! Desviou por pouco!');}
   else {tone(165,.35,'sawtooth',.04);notify('Quase virou notícia no jornal!');}
-  showDialogue(good?SCENES.bikeOK:SCENES.bikeHit,()=>{world.bike.visible=false;advanceTo(7);});
+  showDialogue(good?SCENES.bikeOK:SCENES.bikeHit,()=>{world.bike.visible=false;advanceTo(8);});
 }
 function togglePause(){
   if(!started||ui.end.hidden===false)return;
@@ -285,7 +292,7 @@ function update(dt){
   if(!started)return;
   pollGamepadActions();
   if(paused)return;
-  if(step<=5)audio?.update(dt);
+  if(step<=6)audio?.update(dt);
   if(!dialogue&&!bikeEvent&&!lotteryOpen){
     const input=getInput();
     const heading=cameraRelativeMove(input.x,input.y,yaw);
@@ -303,7 +310,7 @@ function update(dt){
   }else{actors[heroId].userData.moving=0;updateCompanion(dt);}
   for(const id of ['joao','crist'])animateElder(actors[id],dt,actors[id].userData.moving,clockTime);
   world.update(clockTime,actors[heroId].position);
-  if(step===2){
+  if(step===3){
     const other=actors[heroId==='joao'?'crist':'joao'];
     world.markers.crist.point.copy(other.position);
     world.markers.crist.holder.position.x=other.position.x;
@@ -317,17 +324,17 @@ function update(dt){
     ui.eventBar.style.transform='scaleX('+clamp(1-t,0,1)+')';
     if(t>=1)finishBike();
   }else if(!dialogue&&!lotteryOpen){
-    if(step===6&&nearTarget())startBike();
+    if(step===7&&nearTarget())startBike();
   }
   const marker=world.markers[activeTargetId()];
-  if(marker&&step<8){
+  if(marker&&step<FINAL_STEP){
     const pos=actors[heroId].position,distance=Math.hypot(pos.x-marker.point.x,pos.z-marker.point.z);
     ui.distance.textContent=Math.ceil(distance)+' METROS';
     const look=Math.atan2(marker.point.x-pos.x,marker.point.z-pos.z)-yaw;
     ui.pointer.style.transform='rotate('+(-look*180/Math.PI)+'deg)';
     const close=distance<=marker.radius;
     ui.prompt.hidden=!close||!!dialogue||!!bikeEvent||lotteryOpen;
-    ui.promptText.textContent=step===6?'Atravesse com cuidado':marker.label;
+    ui.promptText.textContent=step===7?'Atravesse com cuidado':marker.label;
   }else ui.prompt.hidden=true;
   updateCamera(dt);
 }
@@ -347,15 +354,19 @@ function start(){
   if(started)return;
   createAudio();el('startBtn').blur();
   const data=readSave();step=data.step;packing=normalizePacking(data.packing);
-  if(step===8){step=0;packing=[];writeSave();}
-  const spawn=step<=5?{x:-1.5,z:5}:step===6?{x:49,z:9}:{x:77,z:11};
-  if(step===3){spawn.x=-12.2;spawn.z=-6.2;}
+  if(step===FINAL_STEP){step=0;packing=[];writeSave();}
+  const spawn=step===0?{x:-15.5,z:-14.65}:
+    step===1?{x:-12,z:-10.5}:
+    step===2?{x:-7.5,z:2.5}:
+    step===4?{x:-12.2,z:-6.2}:
+    step<=6?{x:-1.5,z:5}:
+    step===7?{x:49,z:9}:{x:77,z:11};
   actors.joao.position.set(spawn.x,0,spawn.z);
   actors.crist.position.set(spawn.x+1.3,0,spawn.z+0.5);
   setHero(data.hero,true);started=true;paused=false;
   ui.start.hidden=true;ui.loading.hidden=true;ui.hud.hidden=false;ui.mobile.hidden=!mobile;
   updateMission();snapCamera();
-  if(step===0)showDialogue(INTRO,()=>notify('Procure o bilhete sobre a mesa da varanda.'));
+  if(step===0)showDialogue(INTRO,()=>notify('Caminhe até o café dentro da casa para começar o dia.'));
   else notify('Progresso recuperado: '+getQuest(step).title);
   ui.soundBtn.textContent=soundEnabled?'♪':'×';
   ui.soundBtn.setAttribute('aria-label',soundEnabled?'Desativar som':'Ativar som');
@@ -444,7 +455,7 @@ function setup(){
       token.textContent=String(n).padStart(2,'0');target.appendChild(token);
     }
   }
-  setHero('joao',true);world.setTarget('ticket');
+  setHero('joao',true);world.setTarget('wake');
   onResize();bindInputs();snapCamera();
   ui.loading.hidden=true;ui.debug.hidden=!DEBUG;
   ui.canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fatal(new Error('O contexto WebGL foi perdido. Recarregue a página para continuar.'));});
