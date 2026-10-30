@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import {farewellGoal,dogAction} from './dog-behavior.js';
+import {moveWithCollision} from './locomotion.js';
 import {FARM_HOUSE,FARM_GATE,FARM_OBJECTS,isInsideHouse,makeHouseColliders,makeFarmFenceColliders} from './farm-layout.js';
 
 const mat=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness:0.96,flatShading:true,...extra});
@@ -84,9 +86,28 @@ function house(scene,colliders){
     box(h,.55,.42,.17,mat(x<1.5?'#53694c':'#7a6043'),x,2.39,-4.045);
   }
   sign(h,'OS DOIS NA ROÇA',1.55,2.08,-4.00,1.66,.23,'#664b32');
-  // Detalhes domésticos: calendário e chaleira.
+  // Interior de roça: calendário, fogão de ferro, livros e utensílios.
   sign(h,'SEGUNDA-FEIRA',-5.7,2.5,4.44,2.05,.48,'#82633e');
+  sign(h,'06:45',-.85,3.2,-4.18,1.30,.43,'#66503b');
   cyl(h,.24,.32,.36,mat('#8d9990'),1.05,.44,2.25,9);
+  const iron=mat('#444746'),stoveBody=mat('#7e7a6a');
+  box(h,1.55,1.04,.95,stoveBody,6.05,.68,1.15);
+  box(h,1.65,.10,1.05,iron,6.05,1.25,1.15);
+  for(const bx of [5.58,6.48]){
+    cyl(h,.24,.24,.035,iron,bx,1.32,1.15,10);
+    cyl(h,.075,.09,.13,mat('#d1b18b'),bx,1.42,1.15,8);
+  }
+  box(h,.73,.13,.15,mat('#d5c4a7'),6.05,.79,1.66);
+  // Prateleira encostada à parede de fundo, sem interromper a circulação.
+  for(const yy of [1.1,1.84,2.6]){
+    box(h,2.6,.11,.42,drawer,-.7,yy,-4.03);
+  }
+  for(let i=0;i<8;i++){
+    const colors=['#76613f','#8f5744','#7a8e73','#bd9977'];
+    box(h,.21,.51,.29,mat(colors[i%4]),-1.78+i*.31,2.16,-4.01);
+  }
+  box(h,1.12,.65,.07,mat('#e7d9bb'),-2.6,3.02,4.7);
+  box(h,1.12,.65,.07,mat('#e7d9bb'),-4.8,3.02,4.7);
   const interiorLight=new THREE.PointLight('#fce2ad',13,17,2);
   interiorLight.position.set(0,4,0);h.add(interiorLight);
   // Obstáculos com faces físicas correspondentes às paredes (não bloqueia o chão todo).
@@ -95,6 +116,7 @@ function house(scene,colliders){
   colliders.push({x1:-21.25,x2:-18.3,z1:-17.15,z2:-13.55,height:1.1,tag:'bed'});
   colliders.push({x1:-11.2,x2:-9.4,z1:-16.5,z2:-15.1,height:3.4,tag:'wardrobe'});
   colliders.push({x1:-12.55,x2:-11.65,z1:-15.05,z2:-14.05,height:.7,tag:'inside-suitcase'});
+  colliders.push({x1:-9.85,x2:-8.15,z1:-12.4,z2:-11.3,height:1.3,tag:'kitchen-stove'});
   return {
     setInteriorActive(inside){roofGroup.visible=!inside;}
   };
@@ -201,14 +223,30 @@ function makeBike(scene){
 }
 function dog(scene){
   const g=new THREE.Group();g.position.set(2.5,0,-3.4);scene.add(g);
-  const fur=mat('#5d4230'),light=mat('#a98257');
-  const body=ball(g,.64,fur,0,.7,0,1);body.scale.set(1.2,.7,.67);
-  const head=ball(g,.46,fur,0,1.03,.55,1);
-  ball(g,.18,mat('#2b2423'),0,.9,.97,0);
-  for(const x of [-.3,.3]){ball(g,.12,'#131212',x,1.15,.89,0);const ear=ball(g,.24,fur,x,1.42,.46,0);ear.scale.y=1.4;}
-  for(const x of [-.5,.5])for(const z of [-.33,.32])cyl(g,.13,.13,.65,light,x,.35,z,6);
-  const tail=cyl(g,.13,.09,.65,fur,0,.94,-.8);tail.rotation.x=1.0;
-  g.userData.tail=tail;return g;
+  const fur=mat('#5d4230'),light=mat('#a98257'),collar=mat('#a84035');
+  const torso=new THREE.Group();torso.position.y=.72;g.add(torso);
+  const body=ball(torso,.64,fur,0,0,0,1);body.scale.set(1.16,.73,.75);
+  const headPivot=new THREE.Group();headPivot.position.set(0,.36,.55);torso.add(headPivot);
+  ball(headPivot,.45,fur,0,0,0,1);
+  ball(headPivot,.17,mat('#272224'),0,-.11,.45,0);
+  for(const x of [-.26,.26]){
+    ball(headPivot,.083,mat('#151617'),x,.12,.37,0);
+    const ear=ball(headPivot,.22,fur,x,.38,-.07,0);
+    ear.scale.set(.7,1.5,.8);
+  }
+  const band=box(headPivot,.73,.12,.40,collar,0,-.30,-.04);band.rotation.z=.06;
+  const tag=ball(headPivot,.075,mat('#e3bf72'),0,-.36,.27,1);
+  const legs=[];
+  for(const x of [-.43,.43])for(const z of [-.36,.34]){
+    const p=new THREE.Group();p.position.set(x,.52,z);g.add(p);
+    cyl(p,.13,.14,.58,light,0,-.22,0,6);
+    ball(p,.16,light,0,-.49,.10,0);
+    legs.push(p);
+  }
+  const tail=new THREE.Group();tail.position.set(0,.90,-.58);g.add(tail);
+  const tailMesh=cyl(tail,.13,.08,.62,fur,0,.16,-.22,8);tailMesh.rotation.x=-.75;
+  g.userData={tail,legs,torso,headPivot,phase:0,moving:0,home:{x:2.5,z:-3.4}};
+  return g;
 }
 function farmDetails(scene,colliders){
   const hay=mat('#c4a55c'),stone=mat('#a5a496'),soil=mat('#8e734f');
@@ -379,7 +417,7 @@ export function buildWorld(scene){
       p.castShadow=false;
     }scene.add(g);clouds.push(g);
   }
-  let panteraExcitedUntil=0,gateOpened=false;
+  let panteraExcitedUntil=0,gateOpened=false,lastDogTime=0;
   return {markers,colliders,bus,bike,pantera,clouds,sun,radio,ticket,suitcase,packingProps,chickens,
     openGate(){
       if(gateOpened)return;
@@ -397,12 +435,40 @@ export function buildWorld(scene){
       const done=new Set(Array.isArray(ids)?ids:[]);
       for(const [id,object] of Object.entries(packingProps))object.visible=!done.has(id);
     },
-    reactPantera(time){panteraExcitedUntil=time+5;},
-    update(time,target){
+    reactPantera(time){panteraExcitedUntil=time+8.5;},
+    update(time,target,step=0,dt=.016){
       farmhouse.setInteriorActive(isInsideHouse(target.x,target.z));
       gate.hinge.rotation.y+=((gateOpened?Math.PI*.5:0)-gate.hinge.rotation.y)*.1;
       for(const o of Object.values(markers))if(o.holder.visible){o.beacon.position.y=2.3+Math.sin(time*2.3)*.25;o.ring.rotation.z=time*.25;}
-      pantera.userData.tail.rotation.z=Math.sin(time*(time<panteraExcitedUntil?18:7))*(time<panteraExcitedUntil?.75:.35);
+      // Reação da Pantera: aproxima-se com passos visíveis, acompanha brevemente
+      // a despedida e volta para casa; nunca invade a rodoviária.
+      const goal=farewellGoal(target,time,panteraExcitedUntil);
+      const dx=goal.x-pantera.position.x,dz=goal.z-pantera.position.z;
+      const distance=Math.hypot(dx,dz);
+      const action=dogAction(distance,goal.excited);
+      const speed=action==='run'?2.6:action==='walk'?1.45:0;
+      if(speed&&distance>.01){
+        const movement=moveWithCollision(pantera.position,
+          {x:dx/distance*speed,z:dz/distance*speed},dt,colliders,.30);
+        pantera.position.x=movement.x;pantera.position.z=movement.z;
+        pantera.userData.moving=movement.speed;
+        if(movement.speed>.08){
+          const heading=Math.atan2(movement.dx,movement.dz);
+          const angle=Math.atan2(Math.sin(heading-pantera.rotation.y),Math.cos(heading-pantera.rotation.y));
+          pantera.rotation.y+=angle*(1-Math.exp(-Math.min(.05,dt)*5));
+        }
+      }else pantera.userData.moving=0;
+      pantera.userData.phase+=Math.min(.05,dt)*(pantera.userData.moving>0.15?11:2);
+      const gait=Math.sin(pantera.userData.phase)*Math.min(.42,pantera.userData.moving*.22);
+      for(let i=0;i<pantera.userData.legs.length;i++){
+        pantera.userData.legs[i].rotation.x=(i===0||i===3?gait:-gait);
+      }
+      pantera.userData.torso.position.y=.72+(pantera.userData.moving>.15?Math.abs(Math.sin(pantera.userData.phase))*.035:Math.sin(time*2)*.012);
+      pantera.userData.tail.rotation.y=Math.sin(time*(goal.excited?17:6))*(goal.excited?.85:.35);
+      pantera.userData.headPivot.rotation.z=Math.sin(time*3.2)*(goal.excited?.13:.04);
+      markers.pantera.point.set(pantera.position.x,0,pantera.position.z);
+      markers.pantera.holder.position.x=pantera.position.x;
+      markers.pantera.holder.position.z=pantera.position.z;
       chickens.forEach((hen,i)=>{hen.position.y=Math.sin(time*3.3+i)*.022;hen.rotation.x=Math.sin(time*2.5+i)*.05;});
       bus.rotation.z=Math.sin(time*2)*.0015;
       for(let i=0;i<clouds.length;i++)clouds[i].position.x+=.0002*(i%3+1);

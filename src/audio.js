@@ -20,6 +20,32 @@ export function createRuralAudio(){
     gain.gain.exponentialRampToValueAtTime(.0001,start+dur);
     osc.connect(gain).connect(master);osc.start(start);osc.stop(start+dur+.02);
   }
+  function footstep(wood=false){
+    if(!enabled||!ctx||ctx.state!=='running')return;
+    // Passadas discretas, sintetizadas sem carregar arquivos de áudio.
+    const start=ctx.currentTime,osc=ctx.createOscillator(),gain=ctx.createGain();
+    osc.type='triangle';osc.frequency.setValueAtTime(wood?135:93,start);
+    osc.frequency.exponentialRampToValueAtTime(wood?74:51,start+.085);
+    gain.gain.setValueAtTime(.0001,start);
+    gain.gain.exponentialRampToValueAtTime(wood?.012:.009,start+.01);
+    gain.gain.exponentialRampToValueAtTime(.0001,start+.105);
+    osc.connect(gain).connect(master);osc.start(start);osc.stop(start+.12);
+  }
+  function bark(){
+    if(!enabled||!ctx||ctx.state!=='running')return;
+    for(let i=0;i<2;i++){
+      const at=ctx.currentTime+i*.19;
+      const osc=ctx.createOscillator(),gain=ctx.createGain(),filter=ctx.createBiquadFilter();
+      filter.type='lowpass';filter.frequency.value=900;
+      osc.type='sawtooth';osc.frequency.setValueAtTime(240,at);
+      osc.frequency.exponentialRampToValueAtTime(i===0?112:128,at+.135);
+      gain.gain.setValueAtTime(.0001,at);
+      gain.gain.exponentialRampToValueAtTime(.027,at+.013);
+      gain.gain.exponentialRampToValueAtTime(.0001,at+.15);
+      osc.connect(filter).connect(gain).connect(master);
+      osc.start(at);osc.stop(at+.16);
+    }
+  }
   function bird(){
     if(!ctx||!enabled||ctx.state!=='running')return;
     const t=ctx.currentTime,notes=[920,1080,840,1150],start=notes[chirpCount++%notes.length];
@@ -35,7 +61,7 @@ export function createRuralAudio(){
     }
   }
   return {
-    resume,play,
+    resume,play,footstep,bark,
     update(dt){
       if(!enabled||!ctx||ctx.state!=='running')return;
       elapsed+=Math.max(0,Math.min(.1,dt));

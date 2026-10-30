@@ -1,5 +1,5 @@
 # Fase 01 — A Fazenda: plano de acabamento
-**Estado da construção:** v0.1.5 — câmera interna, gestos, descobertas extras; cidade e ônibus preservados; **não considerada finalizada**.
+**Estado da construção:** v0.1.6 — deslocamento fiel, Pantera melhorada e interior enriquecido; continuação preservada; **não considerada finalizada**.
 
 ## Premissa
 João e Crist são dois amigos idosos que moram no interior. Após achar o bilhete e ouvir o resultado no rádio, eles descobrem que ficaram ricos e começam a preparar uma viagem para conhecer Las Vegas.
@@ -12,6 +12,17 @@ João e Crist são dois amigos idosos que moram no interior. Após achar o bilhe
 5. **Preparar as malas**: Crist confere documentos e organiza roupas, João pega a farofa e fecha a mala.
 6. **Despedir-se de Pantera**, que reage à interação.
 7. **Sair pela porteira**, concluindo a Fazenda. A continuação que já existia permanece: cidade, bicicleta, rodoviária e ônibus.
+
+## Polimento 0.1.6
+- [x] Corrigir animação de caminhada no lugar ao encostar nas paredes, usando velocidade real de deslocamento.
+- [x] Aceleração, frenagem e direção por tempo de quadro; analógico direito em velocidade constante entre taxas de FPS.
+- [x] Acompanhante passa pela abertura real da porta, via waypoint de aproximação.
+- [x] Pantera: patas animadas, cabeça, coleira, latidos, aproximação na despedida, acompanhamento curto e retorno ao quintal.
+- [x] Atualizar marcador da Pantera enquanto ela se move.
+- [x] Fogão de ferro, prateleiras, relógio e mais objetos na casa sem cortar a sequência original.
+- [x] Testes de lógica e regressão em colisão, porta, porteira, Pantera, interpolação.
+- [ ] Verificar em jogo real câmera, transições e colisões, desempenho e áudio em PC/Android.
+- [ ] Certificar conclusão completa da Fazenda e continuidade pela cidade, rodoviária e ônibus.
 
 ## Polimento 0.1.5
 - [x] Câmera mais próxima e baixa ao explorar o interior, preservando zoom externo.

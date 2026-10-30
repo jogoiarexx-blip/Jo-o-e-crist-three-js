@@ -6,6 +6,7 @@ import {cameraRelativeMove,rotateCameraRight} from './controls.js';
 import {isInsideHouse,FARM_HOUSE} from './farm-layout.js';
 import {FARM_MEMORIES,nearbyMemory,normalizeMemories} from './farm-memories.js';
 import {cameraRig} from './camera-logic.js';
+import {easeVelocity,moveWithCollision,joystickYaw} from './locomotion.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
@@ -23,6 +24,7 @@ let renderer,scene,camera,world,actors,heroId='joao',step=0,packing=[],started=f
 let yaw=1.12,pitch=.48,zoom=8.2,clockTime=0,lastFrame=0,toastTimer=0;
 let dialogue=null,bikeEvent=null,lotteryOpen=false,lotteryStage=0,lotteryAccepted=false,prevPad={};
 let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null;
+let walking={x:0,z:0},lastStepSound=0;
 const SOUND_KEY='joaoCrist3DSound_v1';
 let soundEnabled=true;
 try{soundEnabled=localStorage.getItem(SOUND_KEY)!=='off';}catch{}
@@ -67,6 +69,7 @@ function setHero(id,quiet=false){
   ui.hero.textContent=id==='joao'?'JOÃO':'CRIST';
   if(!quiet){tone(460,.09);notify('Agora você controla '+ui.hero.textContent+'.');writeSave();}
   actors[other].userData.isCompanion=true;actors[id].userData.isCompanion=false;
+  walking={x:0,z:0};
 }
 function activeTargetId(){
   return step===4?nextPackingTarget(packing):getQuest(step).id;
@@ -162,7 +165,7 @@ function useTarget(){
   const lines=scenes[activeStep];
   if(!lines)return;
   if(activeStep===2)winSound();else tone(600,.13,'triangle',.03);
-  if(activeStep===5){world.reactPantera?.(clockTime);tone(330,.12,'sawtooth',.027);}
+  if(activeStep===5){world.reactPantera?.(clockTime,actors[heroId].position);audio?.bark?.();}
   if(activeStep===6){world.openGate?.();tone(195,.27,'sawtooth',.023);}
   showDialogue(lines,()=>{
     if(activeStep===6){
@@ -219,7 +222,7 @@ function togglePause(){
   if(!started||ui.end.hidden===false)return;
   paused=!paused;ui.pause.hidden=!paused;ui.mobile.hidden=paused||!mobile;
   ui.prompt.hidden=true;
-  if(paused)held.clear();
+  if(paused){held.clear();walking={x:0,z:0};}
 }
 function restart(){
   try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(MEMORY_KEY);}catch{}
@@ -241,7 +244,7 @@ function pollGamepadActions(){
     prevPad[name]=down;
   }
 }
-function getInput(){
+function getInput(dt){
   let mx=0,my=0;
   if(held.has('KeyA')||held.has('ArrowLeft'))mx--;
   if(held.has('KeyD')||held.has('ArrowRight'))mx++;
@@ -252,8 +255,8 @@ function getInput(){
   if(pad){
     if(Math.abs(pad.axes[0]||0)>.18)mx+=pad.axes[0];
     if(Math.abs(pad.axes[1]||0)>.18)my-=pad.axes[1];
-    if(Math.abs(pad.axes[2]||0)>.20)yaw=rotateCameraRight(yaw,pad.axes[2]*5.4);
-    if(Math.abs(pad.axes[3]||0)>.20)pitch=clamp(pitch+pad.axes[3]*.012,.1,1.1);
+    if(Math.abs(pad.axes[2]||0)>.20)yaw=joystickYaw(yaw,pad.axes[2],dt);
+    if(Math.abs(pad.axes[3]||0)>.20)pitch=clamp(pitch+pad.axes[3]*dt*.72,.1,1.1);
   }
   const len=Math.hypot(mx,my);
   if(len>1){mx/=len;my/=len;}
@@ -263,32 +266,36 @@ function blocked(x,z,r=.38,height=0){
   return isBlocked(x,z,r,height,world.colliders);
 }
 function move(entity,vx,vz,dt){
-  const nx=entity.position.x+vx*dt,nz=entity.position.z+vz*dt;
-  if(!blocked(nx,entity.position.z))entity.position.x=nx;
-  if(!blocked(entity.position.x,nz))entity.position.z=nz;
+  const m=moveWithCollision(entity.position,{x:vx,z:vz},dt,world.colliders);
+  entity.position.x=m.x;entity.position.z=m.z;
+  return m;
 }
 function updateCompanion(dt){
   const me=actors[heroId],other=actors[heroId==='joao'?'crist':'joao'];
   const meInside=isInsideHouse(me.position.x,me.position.z);
   const companionInside=isInsideHouse(other.position.x,other.position.z);
-  // Reagrupa na passagem, sem teletransportar durante a travessia próxima à porta.
+  const forward=tempForward.set(Math.sin(me.rotation.y),0,Math.cos(me.rotation.y));
+  let tx=me.position.x-forward.x*1.7+forward.z*.8;
+  let tz=me.position.z-forward.z*1.7-forward.x*.8;
   if(meInside!==companionInside){
-    const px=FARM_HOUSE.doorX+(meInside?-.32:.36);
-    const pz=FARM_HOUSE.doorZ+(meInside?-1.8:1.75);
-    if(Math.hypot(me.position.x-px,me.position.z-pz)>2.7){
-      other.position.set(px,0,pz);other.userData.moving=0;
-    }
+    // Passar primeiro pela lateral correta da porta, depois atravessar o vão.
+    const nearDoorX=FARM_HOUSE.doorX;
+    const nearDoorZ=companionInside?-9.42:-7.55;
+    const doorwayDist=Math.hypot(other.position.x-nearDoorX,other.position.z-nearDoorZ);
+    tx=nearDoorX;
+    tz=doorwayDist>.68?nearDoorZ:(companionInside?-7.46:-9.55);
   }
-  const dir=tempForward.set(Math.sin(me.rotation.y),0,Math.cos(me.rotation.y));
-  const tx=me.position.x-dir.x*1.7+dir.z*.8;
-  const tz=me.position.z-dir.z*1.7-dir.x*.8;
   const dx=tx-other.position.x,dz=tz-other.position.z,dist=Math.hypot(dx,dz);
-  if(dist>15){other.position.set(tx,0,tz);other.userData.moving=0;return;}
-  if(dist>.9){
-    const s=Math.min(dist*2,4.2);
-    move(other,dx/dist*s,dz/dist*s,dt);
-    other.rotation.y=smoothAngle(other.rotation.y,Math.atan2(dx,dz),dt,5.5);
-    other.userData.moving=s;
+  if(dist>16&&meInside===companionInside&&!blocked(tx,tz,.38)){
+    other.position.set(tx,0,tz);other.userData.moving=0;return;
+  }
+  if(dist>.78){
+    const desiredSpeed=Math.min(4.15,dist*2.3);
+    const movement=move(other,dx/dist*desiredSpeed,dz/dist*desiredSpeed,dt);
+    other.userData.moving=movement.speed;
+    if(movement.speed>.035){
+      other.rotation.y=smoothAngle(other.rotation.y,Math.atan2(movement.dx,movement.dz),dt,6.5);
+    }
   }else other.userData.moving=0;
 }
 function smoothAngle(a,b,dt,k){
@@ -329,22 +336,32 @@ function update(dt){
   if(paused)return;
   if(step<=6)audio?.update(dt);
   if(!dialogue&&!bikeEvent&&!lotteryOpen){
-    const input=getInput();
+    const input=getInput(dt);
     const heading=cameraRelativeMove(input.x,input.y,yaw);
-    tempMove.set(heading.x,0,heading.z);
-    const len=tempMove.length();
-    if(len>.001){
-      tempMove.multiplyScalar(1/Math.max(1,len));
-      const speed=input.run?5.5:3.65;
-      move(actors[heroId],tempMove.x*speed,tempMove.z*speed,dt);
-      actors[heroId].rotation.y=smoothAngle(actors[heroId].rotation.y,Math.atan2(tempMove.x,tempMove.z),dt,11);
-      playerVelocity=speed;
-    }else playerVelocity=0;
+    const targetSpeed=input.run?5.25:3.45;
+    const desired={x:heading.x*targetSpeed,z:heading.z*targetSpeed};
+    walking=easeVelocity(walking,desired,dt,input.x||input.y?12:18);
+    const movement=move(actors[heroId],walking.x,walking.z,dt);
+    if(movement.blockedX)walking.x=0;
+    if(movement.blockedZ)walking.z=0;
+    playerVelocity=movement.speed;
+    if(playerVelocity>.12){
+      actors[heroId].rotation.y=smoothAngle(actors[heroId].rotation.y,Math.atan2(movement.dx,movement.dz),dt,11);
+      const interval=input.run?.30:.44;
+      if(clockTime-lastStepSound>interval){
+        lastStepSound=clockTime;
+        audio?.footstep?.(isInsideHouse(actors[heroId].position.x,actors[heroId].position.z));
+      }
+    }
     actors[heroId].userData.moving=playerVelocity;
     updateCompanion(dt);
-  }else{actors[heroId].userData.moving=0;updateCompanion(dt);}
+  }else{
+    walking={x:0,z:0};playerVelocity=0;
+    actors[heroId].userData.moving=0;
+    updateCompanion(dt);
+  }
   for(const id of ['joao','crist'])animateElder(actors[id],dt,actors[id].userData.moving,clockTime);
-  world.update(clockTime,actors[heroId].position);
+  world.update(clockTime,actors[heroId].position,step,dt);
   if(step===3){
     const other=actors[heroId==='joao'?'crist':'joao'];
     world.markers.crist.point.copy(other.position);
@@ -379,7 +396,7 @@ function render(now){
   requestAnimationFrame(render);
   const elapsed=lastFrame?Math.min(.05,(now-lastFrame)/1000):.016;lastFrame=now;
   update(elapsed);
-  if(!started&&!paused&&world){clockTime+=elapsed;for(const id of ['joao','crist'])animateElder(actors[id],elapsed,0,clockTime);world.update(clockTime,actors[heroId].position);}
+  if(!started&&!paused&&world){clockTime+=elapsed;for(const id of ['joao','crist'])animateElder(actors[id],elapsed,0,clockTime);world.update(clockTime,actors[heroId].position,step,elapsed);}
   renderer?.render(scene,camera);
   if(DEBUG){
     frameCounter++;
@@ -402,6 +419,7 @@ function start(){
   actors.joao.position.set(spawn.x,0,spawn.z);
   actors.crist.position.set(spawn.x+1.3,0,spawn.z+0.5);
   setHero(data.hero,true);started=true;paused=false;
+  walking={x:0,z:0};
   ui.start.hidden=true;ui.loading.hidden=true;ui.hud.hidden=false;ui.mobile.hidden=!mobile;
   updateMission();snapCamera();
   if(step===0)showDialogue(INTRO,()=>notify('Caminhe até o café dentro da casa para começar o dia.'));

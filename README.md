@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.1.5 — câmera interna, gestos e exploração opcional).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Primeiro protótipo jogável (v0.1.6 — locomoção física, Pantera animada e interiores).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -73,6 +73,17 @@ A prioridade atual é **Fase 1 — Fazenda**. Não estamos expandindo as demais 
 - Arrastar a câmera ou usar analógico direito agora gira o olhar no mesmo sentido do comando; A/D e os analógicos seguem os lados da câmera. Testes de movimento, acessibilidade, entrada e porteira.
 - Companheiro reagrupa quando alguém cruza de fora para dentro da casa sem atravessar paredes.
 - **A rodoviária e o ônibus não foram modificados.** Ainda pendente verificar gameplay real no navegador, animações e desempenho.
+
+### Evolução 0.1.6 — movimentação real, Pantera e interior rural
+- Aceleração e frenagem suaves **independentes dos FPS**, com deslocamento calculado após colisões e animação proporcional à velocidade real: não andar no lugar quando encostado em uma parede.
+- Seguidor João/Crist usa **ponto intermediário na porta** para entrar e sair da casa, em vez de ser reposicionado através da parede. Teleporte de recuperação limitado a situações distantes e no mesmo ambiente.
+- Analógico direito da câmera corrigido para usar tempo real (`dt`), mantendo velocidade equivalente a 30/60/120 FPS.
+- Sons originais sintetizados de **passos sobre madeira ou terra** e dois latidos breves; respeitam configuração de áudio e não adicionam arquivos externos.
+- **Pantera** ganhou pernas articuladas, coleira, cabeça expressiva, movimento na despedida, acompanhamento curto e retorno ao local inicial; marcador de interação acompanha sua posição.
+- Casa ganhou fogão de ferro, queimadores, prateleira de livros, relógio e detalhes de parede, com colisão simples correspondente ao fogão.
+- Testes unitários reproduzem movimento bloqueado, deslizamento, passagem da porta, abertura da porteira, taxa de giro do gamepad e limites da despedida de Pantera.
+- Nenhuma cena ou etapa foi removida: fazenda, bicicleta, cidade, rodoviária e ônibus continuam.
+- **Validação visual em computador e telefone permanece pendente**: CI testa sintaxe e regras, não a experiência completa em navegador.
 
 ### Evolução 0.1.5 — polimento sem cortar fases
 - **Câmera adaptativa dentro da casa:** aproxima e baixa a perspectiva, verifica paredes em 16 amostras no trajeto e mantém o comportamento exterior quando o jogador sai.
