@@ -1,6 +1,10 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.4 — integração dos GLBs de João e Crist com animações originais).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.5 — GLBs reais, ajustes de escala, apoio dos pés e direção dos controles).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+
+## Plano-mestre de evolução e fases ainda não criadas
+
+**[Abrir o PLANO-MESTRE-JOAO-CRIST-3D.md](PLANO-MESTRE-JOAO-CRIST-3D.md)** — auditoria dos capítulos 00–05, melhorias sistêmicas priorizadas, roteiro detalhado de Vegas/Boate/Cassino/Retorno, integração técnica, QA e extras inspirados na edição 2D. O arquivo é um plano; não significa que as fases futuras já estejam implementadas.
 
 ## Jogar
 
@@ -18,8 +22,8 @@ Os modelos procedurais dos protagonistas foram substituídos por **carregamento 
 
 **Arquivos necessários no repositório (os binários devem ser enviados à pasta abaixo):**
 
-- `assets/characters/JOAO.glb` — João, 1,70 m, caminhada, corrida, dança e comemoração.
-- `assets/characters/CRIST.glb` — Crist, 1,70 m, caminhada, corrida, duas danças, comemoração, aceno e abrir porta.
+- `assets/characters/JOAO.glb` — João, agora normalizado no cenário para ~2,78 unidades incluindo chapéu; caminhada, corrida, dança e comemoração.
+- `assets/characters/CRIST.glb` — Crist, remontado de duas partes e normalizado para ~2,58 unidades incluindo boina; caminhada, corrida, duas danças, comemoração, aceno e abrir porta.
 
 **Publicados no GitHub:** `assets/characters/JOAO.glb`, `assets/characters/CRIST.glb.part1` e `assets/characters/CRIST.glb.part2`. O Crist é remontado automaticamente pelo navegador em um GLB de 4,5 MiB, sem alterar o esqueleto. Os três blobs tiveram seus checksums verificados ao serem enviados. **Os modelos já estão incluídos no projeto publicado — não é necessário fazer upload manual.**
 
@@ -165,14 +169,14 @@ Esta revisão, autorizada pelo usuário após a Fazenda, amplia **sem retirar** 
 ## O que já é jogável
 
 1. Fazenda 3D low poly, casa, galpão, pomar, cerca, Pantera, estrada e cidade com rodoviária e ônibus.
-2. João e Crist 3D procedurais com caminhada, braços/pernas animados, câmera em terceira pessoa e alternância por TAB.
+2. João e Crist usam GLBs próprios rigados e animados com fallback procedural, câmera em terceira pessoa e alternância por TAB.
 3. Companheiro que acompanha o protagonista e desvia dos edifícios estáticos.
 4. Roteiro da **loteria**, bilhete, rádio, conversa, **preparação real das malas (documentos, roupas e farofa)**, despedida de Pantera, porteira, rua e quase atropelamento de bicicleta.
 5. Embarque no ônibus errado, encerramento do prólogo e gancho para o capítulo da excursão.
 6. Conferência visual do bilhete e resultado de loteria fictícia; cantos de pássaros procedurais e botão de som. Saves locais isolados da edição 2D (chave joaoCrist3DSave_v1), incluindo os itens já guardados na mala; pausa, touch, gamepad básico e modo de diagnóstico ?debug=1.
 7. Publicação estática via GitHub Pages e workflow automatizado.
 
-**Ainda não incluído:** personagens GLB com rig, animações Motion Capture, áudio musical, interiores completos, boate jogável, Las Vegas completa, colisão avançada, coop local, tradução, QA em Android real. As atuais figuras procedurais são placeholders de produção, **não** ativos definitivos.
+**Ainda não incluído / sem QA concluído:** campanha de Las Vegas, boate e cassino, cenas de encerramento, música ambiente original completa, colisão avançada, coop local, tradução e validação visual em Android real. **Os GLBs de João e Crist já estão publicados**; figuras procedurais permanecem como fallback e entre vários NPCs. O ônibus e o aeroporto já possuem interiores/salas 3D, ainda a serem polidos.
 
 ## Arquitetura
 
