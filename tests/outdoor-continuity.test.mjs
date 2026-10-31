@@ -22,7 +22,8 @@ test('porteira e rodoviaria seguem no mesmo mapa sem teleportar no avanço 6 par
   }
   const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
   assert.match(main,/if\(!transition\.continuous\)\{/);
-  assert.match(main,/if\(!transition\.continuous\)snapCamera\(\)/);
+  // v0.7.0: só transições com corte reposicionam a câmera (com plano de abertura).
+  assert.match(main,/if\(!transition\.continuous\)\{world\.atmosphere\?\.setStep\(step,true\);snapCamera\(\);establishingShot\(\);\}/);
   assert.match(main,/canSnapDistantCompanion\(dist,meInside===companionInside,continuousOutdoor\)/);
   assert.doesNotMatch(main,/actors\[heroId\]\.position\.set\(49,0,21\)/);
 });

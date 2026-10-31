@@ -60,3 +60,5 @@
 #desertHeatBar{height:100%;transform:scaleX(0);transform-origin:left;background:linear-gradient(90deg,#e9c574,#cf7659)}
 .desert-help{font-size:10px;line-height:1.35;color:#e1d7c3}
 @media(max-width:640px){.desert-hud{bottom:156px;right:9px;width:min(210px,53vw);padding:9px 10px}.desert-head{font-size:9px;flex-wrap:wrap;gap:3px}.desert-help{font-size:9px}}
+/* v0.7.0 — opções de câmera na pausa */
+.camera-options{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:6px 0 4px}.camera-options .option{margin:0;min-width:0;font-size:12px;letter-spacing:.06em}.camera-options .option[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}

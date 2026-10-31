@@ -166,7 +166,9 @@ export function desertColliders(){
     {x1:-57.5,x2:-47.5,z1:-24.2,z2:-19.5,height:4.3,tag:'desert-workshop'},
     {x1:-72.8,x2:-69.2,z1:-6.5,z2:-4.2,height:1.4,tag:'desert-pumps'},
     {x1:-70.0,x2:-67.0,z1:-24.4,z2:-22.4,height:1.15,tag:'desert-bench'},
-    {x1:-66.3,x2:-61.9,z1:-15.0,z2:-11.0,height:2.35,tag:'desert-van'}
+    {x1:-66.3,x2:-61.9,z1:-15.0,z2:-11.0,height:2.35,tag:'desert-van'},
+    // v0.7.0: parapeito do mirante, além do marcador (z=8), sem fechar o acesso.
+    {x1:-55.6,x2:-48.4,z1:10.1,z2:10.5,height:1.1,tag:'desert-lookout-rail'}
   ];
 }
 export function desertCarryActive(step){return step===40;}

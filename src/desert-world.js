@@ -75,13 +75,14 @@ export function buildDesert(scene,colliders,{box,ball,cyl,sign,mat}){
   sign(root,'LAS VEGAS → 35 MILHAS',-52,3.28,-2.84,5.3,.66,'#46634e');
   // Mirante com luzes muito distantes no horizonte, sem simular cidade já jogável.
   box(root,6.0,.12,5.2,mat('#c3a076'),-52,.15,8);
-  sign(root,'MIRANTE · NEVADA',-52,3.12,10.7,5.8,.63,'#645640');
-  const horizon=new THREE.Group();root.add(horizon);
-  for(let i=0;i<19;i++){
-    const x=-57+i*.55,z=13+i%3*.14,h=.30+(i%5)*.16;
-    box(horizon,.33,h,.19,mat(i%3===0?'#a39a82':'#5e625d'),x,.23+h/2,z);
-    ball(horizon,.06,mat('#ffe19c',{emissive:'#816025',emissiveIntensity:.75}),x,.45,z,0);
-  }
+  // Placa ao lado do parapeito: não tapa a vista de Vegas.
+  cyl(root,.09,.12,2.4,mat('#3b4345'),-58.2,1.2,9.6,7);
+  sign(root,'MIRANTE · NEVADA',-58.2,2.55,9.6,4.4,.55,'#645640');
+  // v0.7.0: a miniatura de prédios atrás do mirante foi substituída pela
+  // silhueta de Las Vegas em escala real no horizonte (src/scenery.js).
+  // Parapeito de madeira para enquadrar a vista sem bloquear o marcador.
+  for(const x of [-55.4,-48.6])box(root,.18,1.0,.18,mat('#7b5a3e'),x,.6,10.3);
+  box(root,6.9,.12,.14,mat('#8d6845'),-52,1.05,10.3);
   // Galão muda de posição por checkpoint: abrigo, bomba, mãos de João e van.
   const can=new THREE.Group();root.add(can);
   cyl(can,.35,.39,.80,mat('#6b99a7'),0,.42,0,9);

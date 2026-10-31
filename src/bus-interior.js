@@ -115,6 +115,17 @@ export function buildBusInterior(scene,colliders,{box,ball,cyl,sign,mat}){
   // Bagagem funcional visível após a missão; foge das colisões do corredor.
   const repairedLight=ball(room,.22,mat('#ab4f4c',{emissive:'#000000'}),116.55,2.47,-35.3,1);
   const localColliders=makeBusRoomColliders();
+  // v0.7.0: luzes de palco. Acendem quando a mesa de som volta a funcionar e
+  // varrem o corredor durante o número musical (cones aditivos, sem sombra).
+  const stage={x:109.1,z:-32.55};
+  const spots=[];
+  const spotGeometry=new THREE.ConeGeometry(.95,3.2,18,1,true);spotGeometry.translate(0,-1.6,0);
+  ['#ff6fb5','#ffd36a','#6fd8ff'].forEach((color,i)=>{
+    const pivot=new THREE.Group();pivot.position.set(stage.x-2.6+i*2.6,3.55,stage.z);room.add(pivot);
+    box(pivot,.34,.26,.34,ink,0,.1,0).castShadow=false;
+    const cone=new THREE.Mesh(spotGeometry,new THREE.MeshBasicMaterial({color,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+    pivot.add(cone);spots.push({pivot,cone,phase:i*2.1});
+  });
   let active=false,repaired=false,dancing=false;
   return {
     room,troupe,spawn:{x:101.3,z:-32.55},
@@ -142,6 +153,13 @@ export function buildBusInterior(scene,colliders,{box,ball,cyl,sign,mat}){
         p.userData.arm.rotation.x=dancing?-1.25+Math.sin(beat*1.2)*.4:-.1+Math.sin(beat)*.1;
       }
       mic.rotation.z=Math.sin(t*1.6)*.008;
+      for(const s of spots){
+        const target=dancing?.24:repaired?.07:0;
+        s.cone.material.opacity+=(target-s.cone.material.opacity)*.08;
+        const swing=dancing?.55:.18;
+        s.pivot.rotation.z=Math.sin(t*(dancing?2.4:.6)+s.phase)*swing;
+        s.pivot.rotation.x=Math.cos(t*(dancing?1.9:.5)+s.phase)*swing*.6;
+      }
     }
   };
 }

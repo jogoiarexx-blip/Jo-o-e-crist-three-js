@@ -153,6 +153,7 @@ export function buildRoute66(scene,colliders,{box,ball,cyl,sign,mat}){
     },
     setDrive(run){
       if(!run||!ROAD_DRIVES[run.stage])return;
+      roadGroup.progress=run.progress;
       van.position.x=cx+run.offset;
       // Inclinação corresponde à velocidade lateral, não à posição na faixa.
       const lateral=Number.isFinite(run.lateralVelocity)?run.lateralVelocity:0;

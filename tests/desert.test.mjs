@@ -23,7 +23,7 @@ test('capítulo 5 preserva os cinco capítulos e acrescenta 11 objetivos',()=>{
 });
 test('sólidos do posto não impedem 11 interações nem caminho do galão',()=>{
  const c=desertColliders();
- assert.equal(c.length,5);
+ assert.equal(c.length,6); // v0.7.0: + parapeito do mirante
  assert.ok(DESERT_SPAWN.x>DESERT_ROOM.xMin&&DESERT_SPAWN.x<DESERT_ROOM.xMax);
  assert.equal(isBlocked(DESERT_SPAWN.x,DESERT_SPAWN.z,.38,0,c),false,'spawn');
  const points={

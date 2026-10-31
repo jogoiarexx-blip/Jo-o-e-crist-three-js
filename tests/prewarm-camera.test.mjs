@@ -50,7 +50,9 @@ test('integracao agenda construcao fora da transicao e preserva cache',()=>{
  const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
  assert.match(main,/requestIdleCallback\(build,\{timeout:3500\}\)/);
  assert.match(main,/scheduleChapterPrewarm\(\)/);
- assert.match(main,/cameraClearanceDistance\(focus,yaw,profile\.distance,profile\.lift,blocked\)/);
+ // v0.7.0: a folga da câmera é testada em trajetórias elevadas (passa por cima de obstáculos baixos).
+ assert.match(main,/cameraClearanceDistance\(tmpRaised,yawAngle,distance,lift,blocked\)/);
+ assert.match(main,/solveCameraClearance\(focus,cam\.yaw,cam\.dist,cam\.lift\)/);
  assert.match(world,/prepareChapter\(id\)\{return chapterCache\.get\(id\);\}/);
  assert.match(world,/chapterCache\.get\(active\)/);
 });

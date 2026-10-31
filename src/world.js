@@ -15,6 +15,10 @@ import {applyChapterLayers,chapterAt} from './chapter-layers.js';
 import {createChapterCache} from './lazy-chapters.js';
 import {BUS_START} from './bus-state.js';
 import {FARM_HOUSE,FARM_GATE,FARM_OBJECTS,isInsideHouse,makeHouseColliders,makeFarmFenceColliders} from './farm-layout.js';
+import {createAtmosphere} from './atmosphere.js';
+import {buildScenery,hideLegacyRoadStripes} from './scenery.js';
+import {desertColliders} from './desert-state.js';
+import {mulberry32} from './scatter.js';
 
 const mat=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness:0.96,flatShading:true,...extra});
 const grass=mat('#8bad61'), dirt=mat('#bda57a'), roadMat=mat('#494b47'), wood=mat('#8a5c3b');
@@ -38,8 +42,17 @@ function sign(parent,text,x,y,z,width=4,height=1,bg='#283c3b',fg='#fff1cf'){
   const cx=c.getContext('2d');cx.fillStyle=bg;cx.fillRect(0,0,512,128);
   cx.lineWidth=9;cx.strokeStyle='#cfa86e';cx.strokeRect(8,8,496,112);
   cx.fillStyle=fg;cx.font='bold 56px sans-serif';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(text,256,65,475);
-  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
-  const plane=new THREE.Mesh(new THREE.PlaneGeometry(width,height),new THREE.MeshBasicMaterial({map:t,transparent:false,side:THREE.DoubleSide}));
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;
+  // v0.7.0: antes, DoubleSide mostrava o texto espelhado (ex.: "LEBAM")
+  // quando a placa era vista por trás.
+  // Um único desenho: a face de trás espelha a coordenada U no shader.
+  const material=new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide});
+  material.onBeforeCompile=shader=>{
+    shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',
+      '#ifdef USE_MAP\n  diffuseColor *= texture2D( map, gl_FrontFacing ? vMapUv : vec2( 1.0 - vMapUv.x, vMapUv.y ) );\n#endif');
+  };
+  material.customProgramCacheKey=()=>'sign-two-sided';
+  const plane=new THREE.Mesh(new THREE.PlaneGeometry(width,height),material);
   plane.position.set(x,y,z);parent.add(plane);return plane;
 }
 function house(scene,colliders){
@@ -140,8 +153,10 @@ function barn(scene,colliders){
   box(g,4.2,4.8,.2,wood,0,2.4,4.6);sign(g,'GALPÃO',0,5.4,4.8,4,1,'#614934');
   colliders.push({x1:-36.4,x2:-23.6,z1:-19.5,z2:-10.3,height:8});
 }
+const swayingTrees=[];
 function tree(scene,x,z,k=0,scale=1){
   const group=new THREE.Group();group.position.set(x,0,z);group.scale.setScalar(scale);scene.add(group);
+  group.userData.sway=x*.37+z*.21;swayingTrees.push(group);
   cyl(group,.23,.37,3.4,mat('#6e4f36'),0,1.7,0,7);
   const foliage=leaf[k%leaf.length];
   ball(group,2.0,foliage,0,4.15,0,1);
@@ -311,16 +326,34 @@ function farmDetails(scene,colliders){
   return chickens;
 }
 
-export function buildWorld(scene){
-  scene.background=new THREE.Color('#9ec6be');
-  scene.fog=new THREE.Fog('#9ec6be',45,140);
+// Gramado com variação de tom por vértice: quebra o verde chapado sem textura.
+function farmGround(scene){
+  const geometry=new THREE.PlaneGeometry(215,115,86,46);geometry.rotateX(-Math.PI/2);
+  const colors=[],c=new THREE.Color(),a=new THREE.Color('#7fa457'),b=new THREE.Color('#9bb866'),d=new THREE.Color('#a99a68');
+  const pos=geometry.attributes.position,rand=mulberry32(2026);
+  for(let i=0;i<pos.count;i++){
+    const x=pos.getX(i),z=pos.getZ(i);
+    const n=.5+.25*Math.sin(x*.11+z*.07)+.15*Math.sin(x*.31-z*.23)+.1*(rand()-.5);
+    c.copy(a).lerp(b,Math.max(0,Math.min(1,n)));
+    // Terra batida perto das trilhas da fazenda.
+    if(n<.28)c.lerp(d,.35);
+    colors.push(c.r,c.g,c.b);
+  }
+  geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  const ground=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,flatShading:false}));
+  ground.position.set(38,-.025,4);ground.receiveShadow=true;scene.add(ground);
+  return ground;
+}
+export function buildWorld(scene,{renderer=null,quality=null}={}){
+  swayingTrees.length=0;
   const hemi=new THREE.HemisphereLight('#f7eacf','#738b63',2.05);scene.add(hemi);
   const sun=new THREE.DirectionalLight('#fff2d7',2.65);sun.position.set(-23,40,18);
-  sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-36;sun.shadow.camera.right=36;sun.shadow.camera.top=38;sun.shadow.camera.bottom=-38;sun.shadow.camera.near=1;sun.shadow.camera.far=110;
-  sun.shadow.bias=-.00015;scene.add(sun);scene.add(sun.target);
+  sun.castShadow=quality?.shadows!==false;
+  scene.add(sun);scene.add(sun.target);
+  const atmosphere=createAtmosphere(scene,{hemi,sun,renderer,quality});
   // Keep base outdoor meshes separate from all new indoor/chapter hubs.
   const baseVisualStart=scene.children.length;
-  const ground=box(scene,215,.23,115,grass,38,-.14,4);ground.castShadow=false;
+  farmGround(scene);
   box(scene,180,.12,13,roadMat,40,.015,11);
   for(let x=-45;x<129;x+=8)box(scene,3.1,.025,.15,yellow,x,.096,11);
   box(scene,180,.06,.13,mat('#f4e4c8'),40,.104,4.2);
@@ -431,12 +464,19 @@ export function buildWorld(scene){
   packingProps.farofa=farofa;
 
   const markers={};
+  const markerBeamGeometry=new THREE.CylinderGeometry(.22,.55,6.4,16,1,true);
+  const markerBeamMaterial=new THREE.MeshBasicMaterial({color:'#ffe9a8',transparent:true,opacity:.16,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,fog:false});
+  const markerPulseGeometry=new THREE.RingGeometry(.92,1.02,40);
   const addMarker=(id,x,z,label,radius=3)=>{
     const holder=new THREE.Group();holder.position.set(x,0,z);scene.add(holder);
     const ring=new THREE.Mesh(new THREE.TorusGeometry(.85,.065,6,32),new THREE.MeshBasicMaterial({color:'#ffd877',transparent:true,opacity:.85,depthWrite:false}));
     ring.rotation.x=Math.PI/2;ring.position.y=.07;holder.add(ring);
     const beacon=new THREE.Mesh(new THREE.OctahedronGeometry(.27,0),new THREE.MeshBasicMaterial({color:'#fff0a5'}));beacon.position.y=2.35;holder.add(beacon);
-    holder.visible=false;markers[id]={id,point:new THREE.Vector3(x,0,z),radius,label,holder,ring,beacon};
+    // Coluna de luz suave: o objetivo continua visível de longe e atrás de objetos baixos.
+    const beam=new THREE.Mesh(markerBeamGeometry,markerBeamMaterial);beam.position.y=3.2;holder.add(beam);
+    const pulse=new THREE.Mesh(markerPulseGeometry,new THREE.MeshBasicMaterial({color:'#ffe08a',transparent:true,opacity:.6,depthWrite:false}));
+    pulse.rotation.x=-Math.PI/2;pulse.position.y=.06;holder.add(pulse);
+    holder.visible=false;markers[id]={id,point:new THREE.Vector3(x,0,z),radius,label,holder,ring,beacon,beam,pulse};
   };
   addMarker('wake',-15.5,-11.25,'Tomar café e começar o dia',2.25);
   addMarker('ticket',-4.6,2.3,'Encontrar bilhete da loteria',3.1);
@@ -472,8 +512,23 @@ export function buildWorld(scene){
   outdoorRoot.add(...originalOutdoorNodes,...lateOutdoorNodes);scene.add(outdoorRoot);
   // Hubs posteriores ainda não existem; colliders ativos são apenas do outdoor.
   const originalColliders=colliders.slice();
+  // v0.7.0: vegetação, horizonte e vida ambiente sem colisores novos.
+  const markerCircles=Object.values(markers).map(m=>({x:m.point.x,z:m.point.z,r:1.6}));
+  const outdoorAvoid=[...originalColliders,
+    {x1:-50,x2:132,z1:4.0,z2:18.0},        // rodovia
+    {x1:-19,x2:-1,z1:.1,z2:3.1},{x1:-3.5,x2:9.5,z1:2.8,z2:5.2}, // trilhas da fazenda
+    {x1:12,x2:58,z1:3.5,z2:6.5},{x1:49,x2:57,z1:4.5,z2:21},     // caminho para a cidade
+    {x1:FARM_HOUSE.cx-8.5,x2:FARM_HOUSE.cx+8.5,z1:FARM_HOUSE.cz-5,z2:FARM_HOUSE.cz+10}, // casa e varanda
+    {x1:44,x2:122,z1:-17,z2:24},           // praça e calçadas da cidade
+    {x1:-22,x2:-12,z1:16,z2:22},{x1:-40,x2:-8,z1:-34,z2:-31.5}, // canteiro e plantação
+    {x1:24,x2:32,z1:-21,z2:-15}             // caixa d'água
+  ];
+  const desertAvoid=[...desertColliders(),{x1:-67,x2:-58,z1:-60,z2:40},{x1:-58,x2:-46,z1:5,z2:11.5},{x1:-60,x2:-49,z1:-26,z2:-17}];
+  const density=quality?.scenery??1;
+  const scenery=buildScenery(scene,{outdoorRoot,outdoorAvoid,outdoorCircles:markerCircles,desertAvoid,desertCircles:markerCircles,density});
+  let nightLevel=0,legacyStripesHidden=false;
   let panteraExcitedUntil=0,gateOpened=false,lastDogTime=0;
-  return {markers,colliders,originalColliders,outdoorRoot,bus,bike,city,pantera,clouds,sun,radio,ticket,suitcase,packingProps,chickens,
+  return {markers,colliders,originalColliders,outdoorRoot,bus,bike,city,pantera,clouds,sun,radio,ticket,suitcase,packingProps,chickens,atmosphere,scenery,
     get busInterior(){return chapterCache.peek('bus');},
     get airport(){return chapterCache.peek('airport');},
     get road(){return chapterCache.peek('road');},
@@ -500,6 +555,9 @@ export function buildWorld(scene){
       if(active!=='outdoor')chapterCache.get(active);
       // Só os hubs efetivamente criados participam da ativação/desativação.
       applyChapterLayers(step,outdoorRoot,colliders,originalColliders,chapterCache.loaded());
+      scenery.setChapter(active);
+      atmosphere.setStep(step);
+      if(!legacyStripesHidden&&chapterCache.peek('road')){hideLegacyRoadStripes(chapterCache.peek('road'));legacyStripesHidden=true;}
       windHat.visible=step===11;
       chapterCache.peek('desert')?.setStep(step);
     },
@@ -507,6 +565,8 @@ export function buildWorld(scene){
     setShowActive(on){chapterCache.peek('bus')?.setDancing(on);},
 
     setTarget(id){for(const o of Object.values(markers))o.holder.visible=o.id===id;},
+    // Em conversas e escolhas a coluna de luz some para não cobrir os rostos.
+    setMarkersMuted(muted){markerBeamMaterial.visible=!muted;for(const o of Object.values(markers))o.pulse.visible=!muted;},
     setPacked(ids){
       const done=new Set(Array.isArray(ids)?ids:[]);
       for(const [id,object] of Object.entries(packingProps))object.visible=!done.has(id);
@@ -564,7 +624,21 @@ export function buildWorld(scene){
         bus.rotation.z=Math.sin(time*2)*.0015;
         for(let i=0;i<clouds.length;i++)clouds[i].position.x+=.0002*(i%3+1);
       }
-      sun.position.set(target.x-23,40,target.z+18);sun.target.position.set(target.x,0,target.z);sun.target.updateMatrixWorld();
+      // Vento leve nas copas; amplitude pequena para não parecer tempestade.
+      if(step<BUS_START)for(const t of swayingTrees){t.rotation.z=Math.sin(time*.9+t.userData.sway)*.018;t.rotation.x=Math.sin(time*.7+t.userData.sway*1.3)*.012;}
+      for(const o of Object.values(markers))if(o.holder.visible){
+        const k=(time*.8)%1;o.pulse.scale.setScalar(1+k*1.6);o.pulse.material.opacity=.55*(1-k);
+      }
+      const road=chapterCache.peek('road');
+      if(road&&Number.isFinite(road.progress))scenery.road.setProgress(road.progress);
+      nightLevel+=((step>=45?1:0)-nightLevel)*Math.min(1,dt*.6);
+      scenery.desert.setNight(nightLevel);
+      scenery.update(time,dt);
+    },
+    // Chamado após a câmera: céu centrado nela e sombra seguindo o jogador.
+    updateAtmosphere(dt,focus,cameraPosition){
+      atmosphere.update(dt,focus,cameraPosition);
+      scenery.tint(atmosphere.current);
     }
   };
 }

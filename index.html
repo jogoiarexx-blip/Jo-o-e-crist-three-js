@@ -97,8 +97,8 @@
         <p class="tagline">A viagem mais maluca do mundo</p>
         <p class="synopsis">Dois velhinhos do interior. Um bilhete premiado. O sonho de conhecer Las Vegas. O que poderia dar errado?</p>
         <button class="primary" id="startBtn" type="button">COMEÇAR A AVENTURA <span>→</span></button>
-        <p class="control-note">WASD mover • Mouse câmera • E interagir • TAB alternar João/Crist • ESPAÇO esquivar • Minijogos: 1/2/3 ou toque</p>
-        <p class="edition">CAPÍTULO 05 · O DESERTO NÃO PERDOA · THREE.JS · v0.6.13</p>
+        <p class="control-note">WASD mover • Mouse câmera • C centralizar • E interagir • TAB alternar João/Crist • ESPAÇO esquivar • Minijogos: 1/2/3 ou toque</p>
+        <p class="edition">CAPÍTULO 05 · O DESERTO NÃO PERDOA · THREE.JS · v0.7.0</p>
       </div>
     </section>
 
@@ -108,8 +108,12 @@
         <h2>PAUSADO</h2>
         <p>A aventura continua quando você quiser.</p>
         <button id="resumeBtn" class="primary">CONTINUAR</button>
+        <div class="camera-options" role="group" aria-label="Opções de câmera">
+          <button id="autoCamBtn" class="secondary option" type="button" aria-pressed="true">CÂMERA AUTOMÁTICA: LIGADA</button>
+          <button id="invertYBtn" class="secondary option" type="button" aria-pressed="false">EIXO VERTICAL: NORMAL</button>
+        </div>
         <button id="restartBtn" class="secondary">REINICIAR AVENTURA</button>
-        <div class="control-note">WASD / SETAS: mover · E: interagir · TAB: alternar · ESC: pausa</div>
+        <div class="control-note">WASD / SETAS: mover · E: interagir · TAB: alternar · C: centralizar câmera · ESC: pausa</div>
       </div>
     </section>
 

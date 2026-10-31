@@ -5,7 +5,8 @@ import {isBlocked} from './collision.js';
 import {cameraRelativeMove,rotateCameraRight} from './controls.js';
 import {isInsideHouse,FARM_HOUSE} from './farm-layout.js';
 import {FARM_MEMORIES,nearbyMemory,normalizeMemories} from './farm-memories.js';
-import {cameraRig} from './camera-logic.js';
+import {environmentKind,cameraProfile,autoFollowYaw,dialogueShot,shakeOffset,gameplayFov,dampAngle,damp} from './camera-director.js';
+import {pickQuality,createResolutionGovernor,stepResolution} from './quality.js';
 import {cameraClearanceDistance} from './camera-occlusion.js';
 import {nextChapterToPrewarm} from './chapter-prewarm.js';
 import {easeVelocity,moveWithCollision,joystickYaw} from './locomotion.js';
@@ -15,6 +16,8 @@ import {AIRPORT_START,AIRPORT_SPAWN,AIRPORT_SCENES,findAirportNpc,airportRushRes
 import {ROAD_START,ROAD_CENTER,ROAD_SPAWN,ROAD_SCENES,ROAD_DRIVES,findRoadNpc,initialRoadRun,normalizeRoadRun,advanceRoadRun,roadGrade} from './road-state.js';
 import {DESERT_START,DESERT_SPAWN,DESERT_SCENES,findDesertNpc,isDesertShade,advanceDesertHeat,desertHeatLabel,desertCarryActive} from './desert-state.js';
 import {canUseObjective} from './interaction-anchors.js';
+import {BUS_ROOM} from './bus-state.js';
+import {AIRPORT_ROOM} from './airport-state.js';
 import {findChapterTransition,chapterTransitionAt,chapterEntryPosition} from './chapter-transitions.js';
 import {gateFollowerWaypoint,canSnapDistantCompanion,companionFollowSpeed} from './outdoor-continuity.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
@@ -37,7 +40,15 @@ const BUS_RHYTHM_KEY='joaoCrist3DBusRhythm_v1';
 const ROAD_RUN_KEY='joaoCrist3DRoadRun_v1';
 const DEBUG=new URLSearchParams(location.search).has('debug');
 let renderer,scene,camera,world,actors,heroId='joao',step=0,packing=[],started=false,paused=false;
-let yaw=1.12,pitch=.48,zoom=8.2,clockTime=0,lastFrame=0,toastTimer=0;
+let yaw=1.12,pitch=.36,zoom=8.2,clockTime=0,lastFrame=0,toastTimer=0;
+// v0.7.0: yaw/pitch/zoom são o ALVO pedido pelo jogador; "cam" guarda os
+// valores suavizados realmente usados na tela (e na direção do movimento).
+const cam={yaw:1.12,dist:8.2,lift:3.2,clear:8.2,raise:0,fx:0,fy:1.35,fz:0,ahead:1.8,fov:58,ready:false};
+let lastManualCamera=-99,shake=0,intro=0,lastInput={x:0,y:0};
+let quality=null,resolution=null;
+const AUTO_CAM_KEY='joaoCrist3DAutoCamera_v1',INVERT_Y_KEY='joaoCrist3DInvertY_v1';
+let autoCamera=true,invertY=false;
+try{autoCamera=localStorage.getItem(AUTO_CAM_KEY)!=='off';invertY=localStorage.getItem(INVERT_Y_KEY)==='on';}catch{}
 let dialogue=null,bikeEvent=null,lotteryOpen=false,lotteryStage=0,lotteryAccepted=false,prevPad={};
 let choiceKind=null,choiceIndex=0,rhythmProgress=0,airportRush=null,roadRun=null,lastRoadSave=0,desertHeat=0,lastHeatWarning=0;
 function readRoadRun(stage){
@@ -202,7 +213,7 @@ function advanceTo(next){
   writeSave();
   updateMission();
   if(transition){
-    if(!transition.continuous)snapCamera();
+    if(!transition.continuous){world.atmosphere?.setStep(step,true);snapCamera();establishingShot();}
     notify(transition.message);
     showDialogue(transition.lines);
   }
@@ -371,6 +382,8 @@ function beginRoadDrive(){
   updateRoadHud();
   notify('A/D ou ← → para virar · W acelera · S freia · analógico/joystick nos dois eixos.');
   snapCamera();
+  // Começa a direção com a câmera alta e ela desce até a traseira da van.
+  camera.position.y+=7;camera.position.z+=6;
 }
 function updateRoadHud(){
   if(!roadRun)return;
@@ -406,7 +419,7 @@ function updateRoadDrive(dt){
   world.road.setDrive(roadRun);
   updateRoadHud();
   if(result.hit){
-    tone(172,.13,'sawtooth',.029);
+    tone(172,.13,'sawtooth',.029);shake=Math.max(shake,.75);
     notify('Cuidado! O obstáculo balançou a van. Dá para continuar!');
   }
   if(clockTime-lastRoadSave>1.6){writeRoadRun();lastRoadSave=clockTime;}
@@ -536,6 +549,7 @@ function finishAirportRush(reacted){
   airportRush=null;ui.event.hidden=true;
   const key=airportRushResult(reacted);
   tone(reacted?710:220,.22,'triangle',.032);
+  if(!reacted)shake=Math.max(shake,.5);
   showDialogue(AIRPORT_SCENES[key],()=>advanceTo(26));
 }
 function startBike(){
@@ -558,7 +572,7 @@ function finishBike(){
   const good=bikeEvent.evaded;
   bikeEvent.ended=true;bikeEvent=null;ui.event.hidden=true;
   if(good){tone(700,.1,'triangle');notify('UFA! Desviou por pouco!');}
-  else {tone(165,.35,'sawtooth',.04);notify('Quase virou notícia no jornal!');}
+  else {tone(165,.35,'sawtooth',.04);notify('Quase virou notícia no jornal!');shake=Math.max(shake,.6);}
   showDialogue(good?SCENES.bikeOK:SCENES.bikeHit,()=>{world.bike.visible=false;advanceTo(9);});
 }
 function togglePause(){
@@ -577,7 +591,7 @@ function restart(){
 function pollGamepadActions(){
   const pad=navigator.getGamepads?.()[0];
   if(!pad){prevPad={};return;}
-  const bindings=[[0,'act'],[1,'dodge'],[3,'switch'],[9,'pause']];
+  const bindings=[[0,'act'],[1,'dodge'],[3,'switch'],[9,'pause'],[11,'recenter']];
   for(const [i,name] of bindings){
     const down=!!pad.buttons[i]?.pressed;
     if(down&&!prevPad[name]){
@@ -590,6 +604,7 @@ function pollGamepadActions(){
         if(name==='act')useTarget();
         if(name==='dodge')dodge();
         if(name==='switch')switchHero();
+        if(name==='recenter')recenterCamera();
       }
     }
     prevPad[name]=down;
@@ -606,8 +621,8 @@ function getInput(dt){
   if(pad){
     if(Math.abs(pad.axes[0]||0)>.18)mx+=pad.axes[0];
     if(Math.abs(pad.axes[1]||0)>.18)my-=pad.axes[1];
-    if(Math.abs(pad.axes[2]||0)>.20)yaw=joystickYaw(yaw,pad.axes[2],dt);
-    if(Math.abs(pad.axes[3]||0)>.20)pitch=clamp(pitch+pad.axes[3]*dt*.72,.1,1.1);
+    if(Math.abs(pad.axes[2]||0)>.20){yaw=joystickYaw(yaw,pad.axes[2],dt);lastManualCamera=clockTime;}
+    if(Math.abs(pad.axes[3]||0)>.20){pitch=clamp(pitch+pad.axes[3]*dt*.72*(invertY?-1:1),.05,1.1);lastManualCamera=clockTime;}
   }
   const len=Math.hypot(mx,my);
   if(len>1){mx/=len;my/=len;}
@@ -661,31 +676,117 @@ function smoothAngle(a,b,dt,k){
   return a+d*(1-Math.exp(-k*dt));
 }
 function snapCamera(){updateCamera(.016,true);}
+function recenterCamera(){
+  if(!actors||roadRun)return;
+  yaw=actors[heroId].rotation.y;lastManualCamera=clockTime-1.2;
+}
+// Plano de abertura ao chegar em um capítulo: a câmera começa alta, aberta e
+// girada, e desce até a posição de jogo em ~2,5 s. Não bloqueia os controles.
+function establishingShot(){
+  if(roadRun||(DEBUG&&new URLSearchParams(location.search).has('nointro')))return;
+  cam.yaw+=.85;cam.dist=Math.max(cam.dist*1.9,11);cam.clear=cam.dist;cam.lift+=6.5;cam.fov+=6;
+  intro=2.6;
+}
+const tmpFocus=new THREE.Vector3(),tmpLook=new THREE.Vector3(),tmpRaised=new THREE.Vector3();
+// Obstáculo baixo atrás do herói (van, banco, balcão, parede do ônibus sem teto)?
+// Em vez de colar a câmera nas costas, testa trajetórias mais altas e passa
+// por cima dele, mantendo a distância de enquadramento.
+const CAMERA_RAISES=[0,1.2,2.6,3.8];
+function solveCameraClearance(focus,yawAngle,distance,lift){
+  let best=null;
+  for(const raise of CAMERA_RAISES){
+    tmpRaised.set(focus.x,focus.y+raise,focus.z);
+    const clear=cameraClearanceDistance(tmpRaised,yawAngle,distance,lift,blocked);
+    if(!best||clear>best.clear+.35)best={clear,raise};
+    if(clear>=distance*.72)break;
+  }
+  return best;
+}
+// Interiores sem teto visível: a câmera pode subir, mas não sai da sala
+// (senão a parede do outro lado vira uma tarja preta na frente da cena).
+function roomLimit(kind,focus,yawAngle,distance){
+  const room=kind==='bus'?BUS_ROOM:kind==='airport'?AIRPORT_ROOM:null;
+  if(!room)return distance;
+  const m=.45,sin=Math.sin(yawAngle),cos=Math.cos(yawAngle);
+  let t=distance;
+  if(sin>1e-4)t=Math.min(t,(focus.x-room.xMin-m)/sin);
+  if(sin<-1e-4)t=Math.min(t,(focus.x-room.xMax+m)/sin);
+  if(cos>1e-4)t=Math.min(t,(focus.z-room.zMin-m)/cos);
+  if(cos<-1e-4)t=Math.min(t,(focus.z-room.zMax+m)/cos);
+  return Math.max(.25,t);
+}
+// Mirante do Deserto: a recompensa é ver Las Vegas, então a câmera vira para ela.
+const LOOKOUT={x:-52,z:8};
+function applyLens(fov){
+  if(Math.abs(camera.fov-fov)>.02){camera.fov=fov;camera.updateProjectionMatrix();}
+}
 function updateCamera(dt,immediate=false){
-  const p=actors[heroId].position;
+  shake=Math.max(0,shake-dt*1.7);
   if(roadRun){
     const vehicle=world.road.van.position;
     // Acompanhamento com atraso curto na lateral, mais estável nas curvas.
-    // Velocidade maior abre um pouco o enquadramento da estrada.
+    // Velocidade maior abre a lente; a direção inclina levemente o horizonte.
     const speedRatio=roadRun.speed/ROAD_DRIVES[roadRun.stage].speed;
-    const desired=new THREE.Vector3(vehicle.x*.82+ROAD_CENTER.x*.18,
-      5.0+Math.max(0,speedRatio-1)*1.1,vehicle.z+9.0+Math.max(0,speedRatio-1)*2);
-    camera.position.lerp(desired,immediate?1:1-Math.exp(-dt*4.0));
-    camera.lookAt(vehicle.x,1.0,vehicle.z-6.3);
+    const lateral=Number.isFinite(roadRun.lateralVelocity)?roadRun.lateralVelocity:0;
+    const desired=tmpFocus.set(vehicle.x*.82+ROAD_CENTER.x*.18-lateral*.18,
+      4.3+Math.max(0,speedRatio-1)*1.0,vehicle.z+8.6+Math.max(0,speedRatio-1)*1.8);
+    camera.position.lerp(desired,immediate?1:1-Math.exp(-dt*3.6));
+    const s=shakeOffset(clockTime,shake);
+    camera.position.x+=s.x;camera.position.y+=s.y;
+    camera.lookAt(vehicle.x-lateral*.12,1.05,vehicle.z-7.2);
+    camera.rotateZ(-lateral*.011);
+    cam.fov=immediate?62:damp(cam.fov,58+Math.max(0,Math.min(12,(speedRatio-.55)*14)),dt,3);
+    applyLens(cam.fov);
     return;
   }
-  const inside=isInsideHouse(p.x,p.z)||(step>=BUS_START&&step<ROAD_START);
-  const profile=cameraRig(inside,zoom,pitch);
-  const forward=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
-  const focus=p.clone().add(new THREE.Vector3(0,1.35,0));
+  const hero=actors[heroId],p=hero.position;
+  const other=actors[heroId==='joao'?'crist':'joao'];
+  const kind=environmentKind(step,isInsideHouse(p.x,p.z));
+  const profile=cameraProfile(kind,zoom,pitch);
+  if(!dialogue&&!immediate&&!choiceKind&&!lotteryOpen){
+    yaw=autoFollowYaw(yaw,hero.rotation.y,{speed:playerVelocity,inputX:lastInput.x,inputY:lastInput.y,
+      sinceManual:clockTime-lastManualCamera,dt,strength:profile.follow,enabled:autoCamera});
+  }
+  // Foco à frente do movimento: o jogador vê melhor para onde está indo.
+  let target={yaw,dist:profile.distance,lift:profile.lift,ahead:profile.ahead,fov:gameplayFov(profile.fov,playerVelocity),
+    fx:p.x+walking.x*.3,fy:p.y+profile.focusHeight,fz:p.z+walking.z*.3};
+  const vista=step===45&&Math.hypot(p.x-LOOKOUT.x,p.z-LOOKOUT.z)<7;
+  const shot=vista?{yaw:.06,distance:6.2,lift:1.1,ahead:7,fov:50,focus:{x:p.x,z:p.z},focusHeight:1.6}:
+    dialogue&&other.visible?dialogueShot(p,other.position,cam.yaw,kind):null;
+  if(shot)target={yaw:shot.yaw,dist:shot.distance,lift:shot.lift,ahead:shot.ahead,fov:shot.fov,fx:shot.focus.x,fy:p.y+shot.focusHeight,fz:shot.focus.z};
+  intro=Math.max(0,intro-dt);
+  const slow=intro>0?.2:1,cine=shot?.3:1;
+  if(immediate||!cam.ready){
+    Object.assign(cam,{yaw:target.yaw,dist:target.dist,lift:target.lift,ahead:target.ahead,fov:target.fov,fx:target.fx,fy:target.fy,fz:target.fz,ready:true});
+  }else{
+    cam.yaw=dampAngle(cam.yaw,target.yaw,dt,14*slow*cine);
+    cam.dist=damp(cam.dist,target.dist,dt,6*slow*cine);
+    cam.lift=damp(cam.lift,target.lift,dt,6*slow*cine);
+    cam.ahead=damp(cam.ahead,target.ahead,dt,5);
+    cam.fov=damp(cam.fov,target.fov,dt,3.5*slow);
+    cam.fx=damp(cam.fx,target.fx,dt,shot?4:11);
+    cam.fy=damp(cam.fy,target.fy,dt,8);
+    cam.fz=damp(cam.fz,target.fz,dt,shot?4:11);
+  }
+  const focus=tmpFocus.set(cam.fx,cam.fy,cam.fz);
   // Não impor distância mínima se houver uma parede mais perto que ela.
-  const dist=cameraClearanceDistance(focus,yaw,profile.distance,profile.lift,blocked);
-  const wanted=focus.clone().addScaledVector(forward,-dist);
-  wanted.y+=profile.lift;
-  const look=focus.clone().addScaledVector(forward,profile.ahead);
-  const close=dist<profile.distance-.01;
-  camera.position.lerp(wanted,(immediate||close)?1:1-Math.exp(-dt*(inside?7.5:5.8)));
-  camera.lookAt(look);
+  const solved=solveCameraClearance(focus,cam.yaw,cam.dist,cam.lift);
+  solved.clear=Math.min(solved.clear,roomLimit(kind,focus,cam.yaw,cam.dist));
+  // Encurta/sobe na hora (nunca mostrar através da parede); volta suavemente.
+  cam.clear=immediate||solved.clear<cam.clear?solved.clear:damp(cam.clear,solved.clear,dt,3.2);
+  cam.raise=immediate||solved.raise>cam.raise?solved.raise:damp(cam.raise,solved.raise,dt,2.4);
+  const fraction=cam.dist>0?cam.clear/cam.dist:1;
+  const sin=Math.sin(cam.yaw),cos=Math.cos(cam.yaw);
+  // Se mesmo assim faltar espaço, sobe um pouco (grua) e olha mais à frente.
+  const crane=(1-fraction)*1.1;
+  camera.position.set(focus.x-sin*cam.clear,focus.y+cam.raise+cam.lift*fraction+crane,focus.z-cos*cam.clear);
+  const vibration=kind==='bus'&&step<18?.05:0;
+  const s=shakeOffset(clockTime,shake+vibration);
+  camera.position.x+=s.x;camera.position.y+=s.y;camera.position.z+=s.z;
+  const reach=cam.ahead+(1-fraction)*2.2;
+  tmpLook.set(focus.x+sin*reach,focus.y-.1,focus.z+cos*reach);
+  camera.lookAt(tmpLook);
+  applyLens(cam.fov);
 }
 function update(dt){
   clockTime+=dt;
@@ -713,7 +814,8 @@ function update(dt){
     actors[heroId==='joao'?'crist':'joao'].userData.moving=0;
   }else if(!dialogue&&!bikeEvent&&!airportRush&&!lotteryOpen&&!choiceKind){
     const input=getInput(dt);
-    const heading=cameraRelativeMove(input.x,input.y,yaw);
+    lastInput=input;
+    const heading=cameraRelativeMove(input.x,input.y,cam.yaw);
     const targetSpeed=input.run?5.25:3.45;
     const desired={x:heading.x*targetSpeed,z:heading.z*targetSpeed};
     walking=easeVelocity(walking,desired,dt,input.x||input.y?12:18);
@@ -732,7 +834,7 @@ function update(dt){
     actors[heroId].userData.moving=playerVelocity;
     updateCompanion(dt);
   }else{
-    walking={x:0,z:0};playerVelocity=0;
+    walking={x:0,z:0};playerVelocity=0;lastInput={x:0,y:0};
     actors[heroId].userData.moving=0;
     updateCompanion(dt);
   }
@@ -763,7 +865,7 @@ function update(dt){
   if(marker&&step<FINAL_STEP){
     const pos=actors[heroId].position,distance=Math.hypot(pos.x-marker.point.x,pos.z-marker.point.z);
     ui.distance.textContent=Math.ceil(distance)+' METROS';
-    const look=Math.atan2(marker.point.x-pos.x,marker.point.z-pos.z)-yaw;
+    const look=Math.atan2(marker.point.x-pos.x,marker.point.z-pos.z)-cam.yaw;
     ui.pointer.style.transform='rotate('+(-look*180/Math.PI)+'deg)';
     const close=canUseObjective(marker,pos,world.colliders,step);
     const extra=step<=6&&!close?nearbyMemory(pos,[...memories]):null;
@@ -776,12 +878,21 @@ function update(dt){
     ui.promptText.textContent=close?(step===8?'Atravesse com cuidado':marker.label):
       extra?'Conhecer: '+extra.name:cityNpc?'Conversar: '+cityNpc.name:busNpc?'Conversar: '+busNpc.name:airportNpc?'Conversar: '+airportNpc.name:roadNpc?'Conversar: '+roadNpc.name:desertNpc?'Conversar: '+desertNpc.name:'Interagir';
   }else ui.prompt.hidden=true;
+  world.setMarkersMuted?.(!!dialogue||!!choiceKind||lotteryOpen);
   updateCamera(dt);
 }
 function render(now){
   requestAnimationFrame(render);
   const elapsed=lastFrame?Math.min(.05,(now-lastFrame)/1000):.016;lastFrame=now;
   update(elapsed);
+  if(world&&actors){
+    const focus=roadRun?world.road.van.position:actors[heroId].position;
+    world.updateAtmosphere?.(elapsed,focus,camera.position);
+  }
+  if(resolution&&shouldSimulateWorld(started,paused)){
+    const r=stepResolution(resolution,elapsed);resolution=r.state;
+    if(r.changed)renderer.setPixelRatio(resolution.ratio);
+  }
   // Sem partida ou pausado: nenhuma simulação e até 10 desenhos/s para poupar GPU.
   // Mantém um desenho ocasional para atualizar a tela, inclusive após carregar GLB.
   if(!shouldSimulateWorld(started,paused) && now-lastIdleRender<100)return;
@@ -791,7 +902,7 @@ function render(now){
     frameCounter++;
     if(now-fpsStart>1000){fps=frameCounter*1000/(now-fpsStart||1);fpsStart=now;frameCounter=0;}
     const loaded=world.loadedChapters().join(',')||'fazenda/cidade';
-    ui.debug.textContent='FPS: '+Math.round(fps)+' | PASSO: '+step+' | x:'+Math.round(actors[heroId].position.x)+' z:'+Math.round(actors[heroId].position.z)+' | Hubs: '+loaded+' | Draw calls: '+renderer.info.render.calls;
+    ui.debug.textContent='FPS: '+Math.round(fps)+' | PASSO: '+step+' | x:'+Math.round(actors[heroId].position.x)+' z:'+Math.round(actors[heroId].position.z)+' | Hubs: '+loaded+' | Draw calls: '+renderer.info.render.calls+' | Qualidade: '+quality.id+' · '+renderer.getPixelRatio().toFixed(2)+'x';
   }
 }
 function start(){
@@ -822,6 +933,11 @@ function start(){
     for(const id of ['joao','crist'])
       actors[id].position.set(positions[id].x,0,positions[id].z);
   }
+  // QA: ?debug=1&at=x,z posiciona a dupla para capturas e testes visuais.
+  const debugAt=DEBUG?new URLSearchParams(location.search).get('at')?.split(',').map(Number):null;
+  if(debugAt?.length===2&&debugAt.every(Number.isFinite)){
+    actors.joao.position.set(debugAt[0],0,debugAt[1]);actors.crist.position.set(debugAt[0]+1.1,0,debugAt[1]-.6);
+  }
   setHero(data.hero,true);started=true;paused=false;
   if(chapterEntry){yaw=chapterEntry.camera.yaw;zoom=chapterEntry.camera.zoom;}
   else if(step>=DESERT_START){yaw=1.18;zoom=7.3;}
@@ -830,7 +946,9 @@ function start(){
   else if(step>=BUS_START){yaw=1.4;zoom=6.4;}
   walking={x:0,z:0};
   ui.start.hidden=true;ui.loading.hidden=true;ui.hud.hidden=false;ui.mobile.hidden=!mobile;
-  updateMission();if(step===29||step===33)beginRoadDrive();snapCamera();
+  updateMission();world.atmosphere?.setStep(step,true);
+  if(step===29||step===33)beginRoadDrive();snapCamera();
+  if(!roadRun)establishingShot();
   if(isCompletedSave(step,FINAL_STEP)){
     ui.end.hidden=false;
     ui.hud.hidden=true;ui.mobile.hidden=true;ui.mission.hidden=true;ui.prompt.hidden=true;
@@ -872,6 +990,7 @@ function bindInputs(){
     }
     if(!started||paused)return;
     if(e.code==='Tab'){switchHero();return;}
+    if(e.code==='KeyC'){recenterCamera();return;}
     if(e.code==='KeyE'||e.code==='Enter'){useTarget();return;}
     if(e.code==='Space'){dodge();}
   });
@@ -894,12 +1013,23 @@ function bindInputs(){
   ui.canvas.addEventListener('pointermove',e=>{
     if(e.pointerId!==cameraPointer)return;
     const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;
-    yaw=rotateCameraRight(yaw,dx);pitch=clamp(pitch+dy*.004,.1,1.1);
+    yaw=rotateCameraRight(yaw,dx);pitch=clamp(pitch+dy*.004*(invertY?-1:1),.05,1.1);
+    lastManualCamera=clockTime;
   });
   const resetCameraPointer=e=>{if(e.pointerId===cameraPointer)cameraPointer=null;};
   ui.canvas.addEventListener('pointerup',resetCameraPointer);
   ui.canvas.addEventListener('pointercancel',resetCameraPointer);
-  ui.canvas.addEventListener('wheel',e=>{zoom=clamp(zoom+Math.sign(e.deltaY)*.8,5.2,12);e.preventDefault();},{passive:false});
+  ui.canvas.addEventListener('wheel',e=>{zoom=clamp(zoom+Math.sign(e.deltaY)*.8,4.2,12);e.preventDefault();},{passive:false});
+  const autoBtn=el('autoCamBtn'),invertBtn=el('invertYBtn');
+  const refreshCameraOptions=()=>{
+    autoBtn.textContent='CÂMERA AUTOMÁTICA: '+(autoCamera?'LIGADA':'DESLIGADA');
+    autoBtn.setAttribute('aria-pressed',String(autoCamera));
+    invertBtn.textContent='EIXO VERTICAL: '+(invertY?'INVERTIDO':'NORMAL');
+    invertBtn.setAttribute('aria-pressed',String(invertY));
+  };
+  autoBtn.addEventListener('click',()=>{autoCamera=!autoCamera;try{localStorage.setItem(AUTO_CAM_KEY,autoCamera?'on':'off');}catch{}refreshCameraOptions();});
+  invertBtn.addEventListener('click',()=>{invertY=!invertY;try{localStorage.setItem(INVERT_Y_KEY,invertY?'on':'off');}catch{}refreshCameraOptions();});
+  refreshCameraOptions();
   const pad=el('joystick'),thumb=el('joystickThumb');
   const padMove=e=>{
     if(stick.id!==e.pointerId)return;
@@ -928,13 +1058,16 @@ function fatal(error){
   ui.fatal.hidden=false;ui.fatalText.textContent=String(error?.message||error);
 }
 function setup(){
-  renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:!mobile,alpha:false,powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(devicePixelRatio||1,mobile?1.3:1.8));
+  const params=new URLSearchParams(location.search);
+  quality=pickQuality({mobile,cores:navigator.hardwareConcurrency,override:params.get('q')});
+  resolution=createResolutionGovernor(quality,devicePixelRatio||1);
+  renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:quality.antialias,alpha:false,powerPreference:'high-performance'});
+  renderer.setPixelRatio(resolution.ratio);
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=1.16;
-  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(64,innerWidth/innerHeight,.1,240);
-  world=buildWorld(scene);
+  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,700);
+  world=buildWorld(scene,{renderer,quality});
   actors={joao:createElder('joao'),crist:createElder('crist')};
   actors.joao.position.set(-1.5,0,5);actors.crist.position.set(1.5,0,3);
   actors.joao.rotation.y=actors.crist.rotation.y=1.1;

@@ -1,6 +1,17 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.13 — direção da Route 66 com aceleração, freio, inércia lateral, velocímetro e cenário dinâmico).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.7.0 — céu e luz por capítulo, horizontes, cenografia viva, câmera cinematográfica e placas legíveis).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+
+## QA-13 — Gráficos, câmera e polimento das fases (v0.7.0)
+
+- **Atmosfera por capítulo:** céu em gradiente com sol, neblina, luz e exposição próprios — manhã na fazenda, fim de tarde na excursão, tarde dourada na Route 66, sol a pino no deserto e **pôr do sol no mirante**.
+- **Horizonte em todos os capítulos:** morros, mesas e pinheiros em camadas; a Route 66 continua até o horizonte; nenhum mapa termina no vazio.
+- **Cenário vivo:** capim, flores e pedras instanciados, pássaros, árvores ao vento, paisagem passando pela janela do ônibus, avião decolando no aeroporto, arbustos secos rolando e **Las Vegas acendendo ao entardecer**.
+- **Câmera nova:** mais baixa e suave, segue o herói automaticamente, enquadra os dois nos diálogos, faz plano de abertura ao chegar em cada capítulo, passa por cima de obstáculos baixos e não sai dos interiores. **C** centraliza; a pausa tem *câmera automática* e *eixo vertical invertido*.
+- **Placas corrigidas:** antes apareciam espelhadas vistas por trás.
+- **Desempenho:** perfis `low/medium/high` (`?q=`), sombra que acompanha o jogador e resolução dinâmica.
+- Save continua na versão 7; nenhuma missão foi removida. **127 testes passando.**
+- [Relatório técnico QA-13](QA-13-GRAFICOS-CAMERA-FASES.md).
 
 ## QA-12 — Direção mais completa na Route 66 (v0.6.13)
 
@@ -75,11 +86,11 @@
 
 https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 
-**PC:** WASD/setas movem, mouse arrastado gira a câmera, roda do mouse aproxima, E/Enter interage/avança diálogos, TAB troca João/Crist, espaço esquiva da bicicleta, Shift corre, Esc pausa.
+**PC:** WASD/setas movem, mouse arrastado gira a câmera, roda do mouse aproxima, C centraliza a câmera, E/Enter interage/avança diálogos, TAB troca João/Crist, espaço esquiva da bicicleta, Shift corre, Esc pausa.
 
 **Celular:** analógico à esquerda, botões AÇÃO / TROCAR / ESQUIVAR, arrastar a tela gira a câmera.
 
-**Gamepad:** analógico esquerdo move, direito gira a câmera, A interage, B esquiva, Y troca personagem, Start pausa (diálogos e bicicleta estão acessíveis por teclado/touch; integração completa do gamepad seguirá).
+**Gamepad:** analógico esquerdo move, direito gira a câmera (R3 centraliza), A interage, B esquiva, Y troca personagem, Start pausa (diálogos e bicicleta estão acessíveis por teclado/touch; integração completa do gamepad seguirá).
 
 ## Substituição dos protagonistas — GLB (v0.6.4)
 
