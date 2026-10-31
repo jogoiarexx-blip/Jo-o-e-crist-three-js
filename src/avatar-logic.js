@@ -3,6 +3,13 @@ export const CHARACTER_ASSETS=Object.freeze({
   joao:'./assets/characters/JOAO.glb',
   crist:'./assets/characters/CRIST.glb'
 });
+// Um GLB muito grande também pode ser carregado como fragmentos binários.
+export const CHARACTER_PACKED_PARTS=Object.freeze({
+  crist:Object.freeze([
+    './assets/characters/CRIST.glb.part1',
+    './assets/characters/CRIST.glb.part2'
+  ])
+});
 export const CHARACTER_HEIGHT=1.7;
 export const CHARACTER_CLIPS=Object.freeze({
   idle:'__idle__',walk:'Walking',run:'Running',dance:'FunnyDancing_02',

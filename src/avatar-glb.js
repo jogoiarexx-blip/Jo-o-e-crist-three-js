@@ -3,7 +3,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 
 // Estes arquivos são fornecidos pelo criador do jogo. O fallback procedural
 // só aparece se o GLB estiver ausente, corrompido ou inacessível.
-import {CHARACTER_ASSETS,CHARACTER_CLIPS,normalizeCharacterHeight,getCharacterAnimationName} from './avatar-logic.js';
+import {CHARACTER_ASSETS,CHARACTER_PACKED_PARTS,CHARACTER_CLIPS,normalizeCharacterHeight,getCharacterAnimationName} from './avatar-logic.js';
 export {CHARACTER_ASSETS,CHARACTER_CLIPS,normalizeCharacterHeight,getCharacterAnimationName} from './avatar-logic.js';
 
 function makeIdleClip(walk){
@@ -55,7 +55,31 @@ export function updateCharacterAnimation(root,dt){
 export async function loadCharacterGlb(root,id,loader=new GLTFLoader()){
   const url=CHARACTER_ASSETS[id];
   if(!url||!root)throw new Error('Modelo de personagem desconhecido: '+id);
-  const gltf=await loader.loadAsync(url);
+  // Crist foi dividido em 2 blobs verificados byte a byte para caber no
+  // transporte de arquivos do GitHub. O GLB original é remontado na memória,
+  // sem perdas na malha, texturas, rig ou animações.
+  const parts=CHARACTER_PACKED_PARTS[id]||null;
+  let gltf;
+  if(parts){
+    const blocks=await Promise.all(parts.map(async part=>{
+      const response=await fetch(part);
+      if(!response.ok)throw new Error('Arquivo GLB ausente: '+part+' ('+response.status+')');
+      return new Uint8Array(await response.arrayBuffer());
+    }));
+    const total=blocks.reduce((n,block)=>n+block.byteLength,0);
+    const merged=new Uint8Array(total);
+    let at=0;
+    for(const block of blocks){merged.set(block,at);at+=block.byteLength;}
+    // Este é um arquivo GLB completo na memória, não um novo formato de modelo.
+    if(total<20||String.fromCharCode(...merged.subarray(0,4))!=='glTF')
+      throw new Error(id+': fragmentos GLB inválidos');
+    const expectedLength=new DataView(merged.buffer).getUint32(8,true);
+    if(expectedLength!==total)throw new Error(id+': GLB incompleto ('+total+' / '+expectedLength+')');
+    const basePath=new URL('./assets/characters/',document.baseURI).href;
+    gltf=await loader.parseAsync(merged.buffer,basePath);
+  }else{
+    gltf=await loader.loadAsync(url);
+  }
   const model=gltf.scene;
   if(!model)throw new Error(id+': GLB sem cena 3D');
   const box=new THREE.Box3().setFromObject(model);
@@ -77,11 +101,11 @@ export async function loadCharacterGlb(root,id,loader=new GLTFLoader()){
   const old=root.userData.proceduralModel;
   if(old)old.visible=false;
   root.userData.avatarModel=model;
-  root.userData.avatarSource=url;
+  root.userData.avatarSource=parts||url;
   root.userData.avatarClips=gltf.animations.map(c=>c.name);
   root.userData.avatarAnimation=makeCharacterAnimationState(model,gltf.animations);
   updateCharacterAnimation(root,0);
-  return {id,url,height,scale:factor,clips:root.userData.avatarClips};
+  return {id,url:parts||url,height,scale:factor,clips:root.userData.avatarClips};
 }
 export async function loadAllCharacterGlbs(actors,{onLoaded,onError}={}){
   const loader=new GLTFLoader();

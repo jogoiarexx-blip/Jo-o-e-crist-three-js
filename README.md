@@ -21,9 +21,9 @@ Os modelos procedurais dos protagonistas foram substituídos por **carregamento 
 - `assets/characters/JOAO.glb` — João, 1,70 m, caminhada, corrida, dança e comemoração.
 - `assets/characters/CRIST.glb` — Crist, 1,70 m, caminhada, corrida, duas danças, comemoração, aceno e abrir porta.
 
-**Importante:** os binários ainda precisam estar fisicamente nessa pasta do repositório para aparecerem no GitHub Pages. O código está integrado e usa automaticamente o GLB quando o arquivo existe; se ele não estiver publicado, **continua exibindo o personagem procedural como fallback** sem travar o jogo.
+**Publicados no GitHub:** `assets/characters/JOAO.glb`, `assets/characters/CRIST.glb.part1` e `assets/characters/CRIST.glb.part2`. O Crist é remontado automaticamente pelo navegador em um GLB de 4,5 MiB, sem alterar o esqueleto. Os três blobs tiveram seus checksums verificados ao serem enviados. **Os modelos já estão incluídos no projeto publicado — não é necessário fazer upload manual.**
 
-Para publicar os assets, extraia o arquivo `AVATARES_JOAO_CRIST_OTIMIZADOS.zip` fornecido na conversa, abra a pasta `assets/characters/` do repositório, envie os arquivos `JOAO.glb` e `CRIST.glb` e confirme o commit. Não é necessário alterar nomes ou código.
+O pacote `AVATARES_JOAO_CRIST_OTIMIZADOS.zip` da conversa também inclui os dois GLBs completos para backup e reutilização em outros jogos. No GitHub Pages, os arquivos já são carregados automaticamente.
 
 ### O que muda na experiência
 

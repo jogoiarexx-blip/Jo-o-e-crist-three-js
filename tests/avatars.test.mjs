@@ -2,13 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
- CHARACTER_ASSETS,CHARACTER_HEIGHT,CHARACTER_CLIPS,
+ CHARACTER_ASSETS,CHARACTER_PACKED_PARTS,CHARACTER_HEIGHT,CHARACTER_CLIPS,
  normalizeCharacterHeight,getCharacterAnimationName
 } from '../src/avatar-logic.js';
 
 test('models apontam para os dois GLBs enviados, sem inverter João e Crist',()=>{
  assert.equal(CHARACTER_ASSETS.joao,'./assets/characters/JOAO.glb');
  assert.equal(CHARACTER_ASSETS.crist,'./assets/characters/CRIST.glb');
+ assert.deepEqual([...CHARACTER_PACKED_PARTS.crist],[
+   './assets/characters/CRIST.glb.part1','./assets/characters/CRIST.glb.part2'
+ ]);
  assert.equal(CHARACTER_HEIGHT,1.7);
  assert.equal(normalizeCharacterHeight(1.7),1);
  assert.equal(normalizeCharacterHeight(1.8),1.7/1.8);
@@ -50,6 +53,8 @@ test('código do jogo usa os GLBs no mesmo ator sem perder controles e save',()=
  assert.match(main,/createElder\('joao'\)/);
  assert.match(main,/createElder\('crist'\)/);
  assert.match(avatars,/loader\.loadAsync\(url\)/);
+ assert.match(avatars,/loader\.parseAsync\(merged\.buffer,basePath\)/);
+ assert.match(avatars,/new DataView\(merged\.buffer\)\.getUint32\(8,true\)/);
  assert.match(avatars,/root\.add\(model\)/);
  assert.match(avatars,/avatarAnimation=makeCharacterAnimationState/);
  assert.match(avatars,/old\.visible=false/);
