@@ -1,6 +1,13 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.9 — postura parada mais natural e sola dos sapatos alinhada ao chão).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.10 — correção do fluxo de conferência do bilhete e comandos de alternativas).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+
+## QA-09 — Conferência do bilhete destravada (v0.6.10)
+
+- A missão do bilhete na Fazenda avança pelo próprio painel: **CONFERIR RESULTADO → COMEMORAR → diálogo da vitória → falar com Crist**. Não exige tentar interagir novamente com o marcador do cenário quando o painel se fecha.
+- Os atalhos Enter e Espaço deixam o clique nativo dos botões focados agir, sem enviar o mesmo comando também pelo atalho global. E/Enter no restante do jogo continuam habilitados.
+- A regra de etapas do bilhete foi isolada em `src/lottery-state.js` e ganhou testes de regressão; saves e outras fases não foram alterados.
+- [Relatório técnico QA-09](QA-09-BILHETE-ALTERNATIVAS.md).
 
 ## QA-08 — Correção de postura parada e contato dos pés (v0.6.9)
 

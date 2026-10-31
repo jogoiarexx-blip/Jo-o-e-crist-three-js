@@ -18,6 +18,7 @@ import {canUseObjective} from './interaction-anchors.js';
 import {findChapterTransition,chapterTransitionAt,chapterEntryPosition} from './chapter-transitions.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
 import {canSwitchHero,isCompletedSave,shouldSimulateWorld} from './game-state.js';
+import {LOTTERY_STAGE,nextLotteryStage,lotteryStageLabel} from './lottery-state.js';
 import {loadAllCharacterGlbs} from './avatar-glb.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
@@ -484,23 +485,32 @@ function submitCityChoice(optionId){
 }
 
 function openLottery(){
-  if(lotteryOpen||dialogue||paused)return;
-  lotteryOpen=true;lotteryStage=0;
+  if(lotteryOpen||dialogue||paused||step!==2)return;
+  lotteryOpen=true;lotteryStage=LOTTERY_STAGE.CHECK;
   ui.lottery.hidden=false;ui.lotteryReveal.hidden=true;
-  ui.lotteryButton.textContent='CONFERIR RESULTADO';
+  ui.lotteryButton.disabled=false;
+  ui.lotteryButton.textContent=lotteryStageLabel(lotteryStage);
   ui.prompt.hidden=true;ui.mobile.hidden=true;
   tone(420,.12,'triangle',.026);ui.lotteryButton.focus();
 }
 function checkLottery(){
-  if(!lotteryOpen||paused)return;
-  if(lotteryStage===0){
-    lotteryStage=1;ui.lotteryReveal.hidden=false;
-    ui.lotteryButton.textContent='COMEMORAR';
-    tone(600,.19,'triangle',.045);ui.lotteryButton.focus();return;
+  if(!lotteryOpen||paused||!started||step!==2)return;
+  const next=nextLotteryStage(lotteryStage);
+  lotteryStage=next;
+  if(next===LOTTERY_STAGE.REVEALED){
+    ui.lotteryReveal.hidden=false;
+    ui.lotteryButton.textContent=lotteryStageLabel(next);
+    tone(600,.19,'triangle',.045);ui.lotteryButton.focus();
+    return;
   }
-  lotteryOpen=false;ui.lottery.hidden=true;
-  ui.mobile.hidden=paused||!mobile;lotteryAccepted=true;
-  useTarget();
+  if(next!==LOTTERY_STAGE.DONE)return;
+  // O jogador já ativou o bilhete uma vez. Não repetir nearTarget(),
+  // que podia deixar o modal fechado sem completar a missão.
+  lotteryOpen=false;lotteryAccepted=true;
+  ui.lottery.hidden=true;ui.lotteryButton.blur();
+  ui.mobile.hidden=paused||!mobile;
+  winSound();
+  showDialogue(SCENES.ticket,()=>advanceTo(3));
 }
 function startAirportRush(){
   if(airportRush||paused||dialogue)return;
@@ -821,7 +831,12 @@ function start(){
 function bindInputs(){
   const actionKeys=new Set(['Space','Tab','ArrowUp','ArrowDown','ArrowLeft','ArrowRight']);
   window.addEventListener('keydown',e=>{
-    if(actionKeys.has(e.code)||(lotteryOpen&&e.code==='Enter')||(choiceKind&&['Enter','KeyE','Digit1','Digit2','Digit3'].includes(e.code)))e.preventDefault();
+    const nativeButton=e.target?.closest?.('button');
+    // Enter/Espaço em um botão focado já disparam "click" pelo navegador.
+    // Não disparar a mesma alternativa duas vezes via atalho global.
+    const nativeActivation=!!nativeButton&&['Enter','Space'].includes(e.code);
+    if(!nativeActivation&&(actionKeys.has(e.code)||(lotteryOpen&&e.code==='Enter')||(choiceKind&&['Enter','KeyE','Digit1','Digit2','Digit3'].includes(e.code))))e.preventDefault();
+    if(nativeActivation&&(choiceKind||lotteryOpen))return;
     held.add(e.code);
     if(e.repeat)return;
     if(e.code==='Escape'){togglePause();return;}
