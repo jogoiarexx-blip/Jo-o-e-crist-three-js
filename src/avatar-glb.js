@@ -3,14 +3,50 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 
 // Estes arquivos são fornecidos pelo criador do jogo. O fallback procedural
 // só aparece se o GLB estiver ausente, corrompido ou inacessível.
-import {CHARACTER_ASSETS,CHARACTER_PACKED_PARTS,CHARACTER_CLIPS,CHARACTER_HEIGHTS,normalizeCharacterHeight,groundedFootCorrection,isFootContactBone,getCharacterAnimationName} from './avatar-logic.js';
+import {CHARACTER_ASSETS,CHARACTER_PACKED_PARTS,CHARACTER_CLIPS,CHARACTER_HEIGHTS,normalizeCharacterHeight,groundedFootCorrection,isFootContactBone,getCharacterAnimationName,selectNeutralIdleSample,soleGroundCorrection} from './avatar-logic.js';
 export {CHARACTER_ASSETS,CHARACTER_CLIPS,CHARACTER_HEIGHTS,normalizeCharacterHeight,getCharacterAnimationName} from './avatar-logic.js';
 
-function makeIdleClip(walk){
-  // Ambos os Meshy GLBs têm Walking, mas nenhum possui Idle.
-  // Congela uma pose de caminhada para não manter o personagem em T-pose.
+function findSupportFoot(model,side){
+  const found=[];
+  model.traverse(obj=>{
+    if(!obj.isBone||!isFootContactBone(obj.name))return;
+    if(side==='left' && /left|(?:^|[_.:-])l(?:[_.:-]|$)|lfoot|ltoe|lankle/i.test(obj.name))found.push(obj);
+    if(side==='right' && /right|(?:^|[_.:-])r(?:[_.:-]|$)|rfoot|rtoe|rankle/i.test(obj.name))found.push(obj);
+  });
+  // Preferir o osso do pé aos dedos/tornozelo para comparar a mesma
+  // articulação dos dois lados durante a escolha da pose em repouso.
+  return found.find(b=>/foot/i.test(b.name))||found[0]||null;
+}
+function neutralWalkTime(model,walk){
+  const fallback=Math.min(.22,Math.max(0,walk.duration*.35));
+  const left=findSupportFoot(model,'left'),right=findSupportFoot(model,'right');
+  if(!left||!right||!Number.isFinite(walk.duration)||walk.duration<=0)return fallback;
+  const original=[];
+  model.traverse(obj=>original.push([obj,obj.position.clone(),obj.quaternion.clone(),obj.scale.clone()]));
+  const mixer=new THREE.AnimationMixer(model),action=mixer.clipAction(walk);
+  const a=new THREE.Vector3(),b=new THREE.Vector3(),samples=[];
+  try{
+    action.play();
+    for(let i=0;i<16;i++){
+      const time=walk.duration*(i+.5)/16;
+      mixer.setTime(time);
+      model.updateMatrixWorld(true);
+      left.getWorldPosition(a);right.getWorldPosition(b);
+      samples.push({time,left:{y:a.y,z:a.z},right:{y:b.y,z:b.z}});
+    }
+  }finally{
+    action.stop();
+    for(const [obj,pos,quat,scale] of original){
+      obj.position.copy(pos);obj.quaternion.copy(quat);obj.scale.copy(scale);
+    }
+    model.updateMatrixWorld(true);
+  }
+  return selectNeutralIdleSample(samples,fallback);
+}
+function makeIdleClip(walk,model){
+  // Evitar congelar uma perna levantada numa amostra arbitrária do Walking.
   if(!walk)return null;
-  const sample=Math.min(.22,Math.max(0,walk.duration*.35));
+  const sample=neutralWalkTime(model,walk);
   const tracks=walk.tracks.map(track=>{
     const pose=Array.from(track.createInterpolant().evaluate(sample));
     return new track.constructor(track.name,[0,1],[...pose,...pose]);
@@ -20,7 +56,7 @@ function makeIdleClip(walk){
 export function makeCharacterAnimationState(model,clips){
   const mixer=new THREE.AnimationMixer(model);
   const all=[...clips];
-  const idle=makeIdleClip(clips.find(c=>c.name==='Walking'));
+  const idle=makeIdleClip(clips.find(c=>c.name==='Walking'),model);
   if(idle)all.push(idle);
   const actions={};
   for(const clip of all){
@@ -50,19 +86,52 @@ export function updateCharacterAnimation(root,dt){
     else if(animation.current==='Running')playing.setEffectiveTimeScale(Math.max(.8,Math.min(1.15,(data.moving||0)/5.25)));
   }
   animation.mixer.update(Math.min(Math.max(dt,0),.05));
-  // Um tornozelo fica em apoio ao caminhar: compensar a altura do rig
-  // no grupo visual sem mover o colisor, a câmera ou o save do personagem.
   const ground=data.avatarGround;
-  if(ground?.feet.length &&
-     [CHARACTER_CLIPS.idle,CHARACTER_CLIPS.walk,CHARACTER_CLIPS.run].includes(animation.current)){
-    root.updateMatrixWorld(true);
-    let lowest=Infinity;
-    for(const bone of ground.feet){
-      bone.getWorldPosition(ground.temp);
-      lowest=Math.min(lowest,ground.temp.y);
+  if(ground){
+    const idle=animation.current===CHARACTER_CLIPS.idle;
+    const standing=idle||animation.current===CHARACTER_CLIPS.wave;
+    const locomotion=standing||[CHARACTER_CLIPS.walk,CHARACTER_CLIPS.run].includes(animation.current);
+    if(locomotion){
+      if(ground.lastClip!==animation.current){
+        ground.lastClip=animation.current;
+        ground.clipAge=0;
+        ground.idleMeasured=false;
+      }
+      ground.clipAge+=Math.max(0,dt);
+      root.updateMatrixWorld(true);
+      // A altura do osso não coincide com a SOLA: descontar a altura
+      // da articulação calibrada contra o menor ponto da malha na pose idle.
+      let lowest=Infinity;
+      for(const bone of ground.feet){
+        bone.getWorldPosition(ground.temp);
+        lowest=Math.min(lowest,ground.temp.y);
+      }
+      if(Number.isFinite(lowest)){
+        const soleY=lowest-ground.boneToSole;
+        ground.mount.position.y+=soleGroundCorrection(
+          soleY,root.position.y+.018,dt,standing&&ground.clipAge>.2
+        );
+      }
+      // Medição geométrica da sola na pose estabilizada; resolve os casos
+      // em que o rig usa tornozelos muito acima do sapato.
+      // Durante o movimento, evitar medir todos os vértices a cada frame.
+      const exactIdle=standing&&!ground.idleMeasured&&ground.clipAge>=.23;
+      const noFootSample=!ground.feet.length&&(ground.clipAge-ground.lastBoundAge>=.12);
+      if(exactIdle||noFootSample){
+        const bounds=ground.bounds.setFromObject(ground.mount,true);
+        if(Number.isFinite(bounds.min.y)){
+          const correction=root.position.y+.018-bounds.min.y;
+          ground.mount.position.y+=standing?correction:Math.max(0,correction);
+        }
+        ground.idleMeasured=exactIdle||ground.idleMeasured;
+        ground.lastBoundAge=ground.clipAge;
+      }
+      // Impede deriva vertical após sucessivas animações/transições,
+      // mas deixa espaço para a movimentação dos joelhos na caminhada.
+      ground.mount.position.y=THREE.MathUtils.clamp(
+        ground.mount.position.y,ground.baseY-.75,ground.baseY+.75
+      );
     }
-    if(Number.isFinite(lowest))
-      ground.mount.position.y+=groundedFootCorrection(lowest,ground.referenceY,dt);
   }
   return true;
 }
@@ -119,23 +188,36 @@ export async function loadCharacterGlb(root,id,loader=new GLTFLoader()){
   root.userData.avatarSource=parts||url;
   root.userData.avatarClips=gltf.animations.map(c=>c.name);
   root.userData.avatarAnimation=makeCharacterAnimationState(model,gltf.animations);
-  updateCharacterAnimation(root,0);
-  // Alinha a pose idle efetiva, em vez da bind-pose antes da animação.
-  const posedBounds=new THREE.Box3().setFromObject(mount);
-  if(Number.isFinite(posedBounds.min.y))mount.position.y-=posedBounds.min.y;
+  const animation=root.userData.avatarAnimation;
+  // update(dt=0) com fadeIn(.17) não aplica a pose! Iniciar idle
+  // imediatamente, com peso 1, ANTES de medir sola e altura real.
+  const first=animation.actions[CHARACTER_CLIPS.idle]||
+    animation.actions[Object.keys(animation.actions)[0]];
+  if(first){
+    first.reset().setEffectiveWeight(1).play();
+    animation.current=Object.keys(animation.actions).find(k=>animation.actions[k]===first);
+    animation.mixer.update(0);
+  }
+  root.updateMatrixWorld(true);
+  const posedBounds=new THREE.Box3().setFromObject(mount,true);
+  if(Number.isFinite(posedBounds.min.y))
+    mount.position.y+=root.position.y+.018-posedBounds.min.y;
   const feet=[];
   model.traverse(node=>{
     if(node.isBone&&isFootContactBone(node.name))
       feet.push(node);
   });
-  mount.updateMatrixWorld(true);
+  root.updateMatrixWorld(true);
   const temp=new THREE.Vector3();
-  const referenceY=feet.reduce((low,bone)=>{
+  const lowest=feet.reduce((low,bone)=>{
     bone.getWorldPosition(temp);
     return Math.min(low,temp.y);
   },Infinity);
   root.userData.avatarGround={
-    mount,feet,temp,referenceY:Number.isFinite(referenceY)?referenceY:0
+    mount,feet,temp,bounds:new THREE.Box3(),
+    boneToSole:Number.isFinite(lowest)?lowest-(root.position.y+.018):0,
+    baseY:mount.position.y,clipAge:0,lastBoundAge:0,
+    idleMeasured:false,lastClip:animation.current
   };
   // Não trocar o root do ator: a aventura, missões e saves permanecem iguais.
   const old=root.userData.proceduralModel;

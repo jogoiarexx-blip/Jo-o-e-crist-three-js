@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
  CHARACTER_ASSETS,CHARACTER_PACKED_PARTS,CHARACTER_HEIGHT,CHARACTER_HEIGHTS,CHARACTER_CLIPS,
- normalizeCharacterHeight,groundedFootCorrection,isFootContactBone,getCharacterAnimationName
+ normalizeCharacterHeight,groundedFootCorrection,isFootContactBone,getCharacterAnimationName,selectNeutralIdleSample,soleGroundCorrection
 } from '../src/avatar-logic.js';
 
 test('models apontam para os dois GLBs enviados, sem inverter João e Crist',()=>{
@@ -61,7 +61,12 @@ test('código do jogo usa os GLBs no mesmo ator sem perder controles e save',()=
  assert.match(avatars,/root\.add\(mount\)/);
  assert.match(avatars,/new THREE\.Box3\(\)\.setFromObject\(mount\)/);
  assert.match(avatars,/avatarGround=/);
- assert.match(avatars,/groundedFootCorrection\(lowest,ground\.referenceY,dt\)/);
+ assert.match(avatars,/neutralWalkTime\(model,walk\)/);
+ assert.match(avatars,/first\.reset\(\)\.setEffectiveWeight\(1\)\.play\(\)/);
+ assert.match(avatars,/setFromObject\(mount,true\)/);
+ assert.match(avatars,/boneToSole:/);
+ assert.match(avatars,/soleGroundCorrection\(/);
+ assert.match(avatars,/ground\.bounds\.setFromObject\(ground\.mount,true\)/);
  assert.match(avatars,/avatarAnimation=makeCharacterAnimationState/);
  assert.match(avatars,/old\.visible=false/);
  assert.match(avatars,/onError\?\.\(id,error\)/);
@@ -87,4 +92,23 @@ test('feet classifiers handle toe and ankle names',()=>{
  assert.equal(isFootContactBone('LeftAnkle'),true);
  assert.equal(isFootContactBone('LeftFoot_IK'),false);
  assert.equal(isFootContactBone('Hips'),false);
+});
+
+test('idle seleciona a pose com os pés nivelados e próximos, não um ponto fixo da passada',()=>{
+ const samples=[
+  {time:.08,left:{y:.20,z:-.7},right:{y:.03,z:.8}},
+  {time:.22,left:{y:.025,z:.07},right:{y:.022,z:-.04}},
+  {time:.33,left:{y:.11,z:-.65},right:{y:.02,z:.45}}
+ ];
+ assert.equal(selectNeutralIdleSample(samples),.22);
+ assert.equal(selectNeutralIdleSample([], .15),.15);
+ assert.equal(selectNeutralIdleSample([{time:0,left:{y:NaN,z:0},right:{y:0,z:0}}],.35),.35);
+});
+test('contato da sola corrige penetração imediatamente e reduz oscilação ao caminhar',()=>{
+ assert.ok(soleGroundCorrection(-.07,.018,1/60,false)>.08);
+ assert.ok(Math.abs(soleGroundCorrection(-.07,.018,0,false)-.088)<1e-9);
+ assert.ok(soleGroundCorrection(.14,.018,1/60,false)<0);
+ assert.ok(soleGroundCorrection(.14,.018,1/60,false)>-.05);
+ assert.ok(Math.abs(soleGroundCorrection(.14,.018,1/60,true)+.122)<1e-9);
+ assert.equal(soleGroundCorrection(NaN,.018,1/60,true),0);
 });

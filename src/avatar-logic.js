@@ -22,7 +22,6 @@ export function normalizeCharacterHeight(height,target=CHARACTER_HEIGHT){
   // Exportadores GLB usam unidades diferentes: não truncar o fator.
   return target/height;
 }
-// Corrige a oscilação do pé de apoio sem tremer durante trocas de clipes.
 // Compatível com rigs Meshy/Mixamo que chamam o osso de Foot, Ankle ou Toe.
 // Ignora controladores de IK para não usar a posição dos targets como solo.
 export function isFootContactBone(name){
@@ -35,6 +34,29 @@ export function groundedFootCorrection(footY,referenceY,dt,responsiveness=26){
   const error=Math.max(-.22,Math.min(.22,referenceY-footY));
   if(t===0||error===0)return 0;
   return error*(1-Math.exp(-Math.max(0,responsiveness)*t));
+}
+// Escolhe um instante da caminhada em que ambos os pés estejam nivelados,
+// sem manter o personagem congelado no meio de uma passada larga.
+export function selectNeutralIdleSample(samples,fallback=0){
+  if(!Array.isArray(samples)||!samples.length)return fallback;
+  let best=null,score=Infinity;
+  for(const sample of samples){
+    if(!sample||!Number.isFinite(sample.time)||!sample.left||!sample.right)continue;
+    const {left,right}=sample;
+    if(![left.y,left.z,right.y,right.z].every(Number.isFinite))continue;
+    const value=Math.abs(left.y-right.y)*3+Math.abs(left.z-right.z)*1.7;
+    if(value<score){score=value;best=sample.time;}
+  }
+  return best??fallback;
+}
+// A distância do osso ao chão não é a distância da SOLA ao chão.
+// soleY usa o desnível entre osso e malha calibrado na pose parada.
+export function soleGroundCorrection(soleY,floorY,dt,standing=false){
+  if(!Number.isFinite(soleY)||!Number.isFinite(floorY))return 0;
+  const error=floorY-soleY;
+  if(standing||error>=0)return error; // Impede afundar: correção imediata para cima.
+  const t=Math.max(0,Math.min(.05,Number.isFinite(dt)?dt:0));
+  return error*(1-Math.exp(-8*t)); // Descida suave durante a passada.
 }
 export function getCharacterAnimationName(clips,moving,gesture,dancing){
   const available=new Set(clips);

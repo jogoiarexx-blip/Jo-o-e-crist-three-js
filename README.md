@@ -1,6 +1,15 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.8 — preparação antecipada de capítulos, câmera contra oclusão e identificação de ossos de apoio dos pés).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.9 — postura parada mais natural e sola dos sapatos alinhada ao chão).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+
+## QA-08 — Correção de postura parada e contato dos pés (v0.6.9)
+
+- O repouso dos GLBs deixou de congelar uma posição arbitrária de Walking: agora são verificadas 16 poses candidatas e priorizada a que deixa ambos os pés nivelados e próximos no sentido da caminhada.
+- Idle começa com peso total antes da primeira medição de altura. Isso evita calibrar o personagem pela bind pose ou pelo primeiro frame de um crossfade ainda invisível.
+- O alinhamento inicial considera a **geometria dos sapatos na pose de repouso**, não apenas a altura dos ossos. Na caminhada, a altura dos ossos é convertida em referência de sola previamente calibrada.
+- Se um sapato fica abaixo do solo, a correção de contato é imediata; na descida do passo há suavização. Depois de entrar em idle ou gesto de aceno, o jogo faz nova medição exata da malha para remover qualquer afundamento residual.
+- Mantidos o root, colisores, escala e saves de João/Crist; testes de seleção da pose, altura da sola e regressões em `tests/avatars.test.mjs`.
+- [Relatório técnico QA-08](QA-08-POSTURA-E-PES.md).
 
 ## QA-07 — Preparação dos próximos ambientes, câmera e pés (v0.6.8)
 

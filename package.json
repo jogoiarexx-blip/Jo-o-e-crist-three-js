@@ -1,7 +1,7 @@
 {
   "name": "joao-e-crist-3d",
   "private": true,
-  "version": "0.6.8",
+  "version": "0.6.9",
   "type": "module",
   "description": "Aventura 3D com Three.js, publicável diretamente no GitHub Pages",
   "scripts": {
