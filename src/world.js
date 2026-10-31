@@ -11,7 +11,8 @@ import {ROAD_START,ROAD_TARGETS} from './road-state.js';
 import {buildRoute66} from './road-world.js';
 import {DESERT_START,DESERT_TARGETS} from './desert-state.js';
 import {buildDesert} from './desert-world.js';
-import {applyChapterLayers} from './chapter-layers.js';
+import {applyChapterLayers,chapterAt} from './chapter-layers.js';
+import {createChapterCache} from './lazy-chapters.js';
 import {BUS_START} from './bus-state.js';
 import {FARM_HOUSE,FARM_GATE,FARM_OBJECTS,isInsideHouse,makeHouseColliders,makeFarmFenceColliders} from './farm-layout.js';
 
@@ -368,10 +369,14 @@ export function buildWorld(scene){
   cyl(windHat,.42,.42,.075,mat('#584635'),0,.30,0,12);
   windHat.visible=false;
   const originalOutdoorNodes=scene.children.slice(baseVisualStart);
-  const busInterior=buildBusInterior(scene,colliders,{box,ball,cyl,sign,mat});
-  const airport=buildAirport(scene,colliders,{box,ball,cyl,sign,mat});
-  const road=buildRoute66(scene,colliders,{box,ball,cyl,sign,mat});
-  const desert=buildDesert(scene,colliders,{box,ball,cyl,sign,mat});
+  // Apenas a Fazenda/Rodoviária são montadas no início. Outros capítulos
+  // materializam cenário, NPCs, geometrias e colisores quando visitados.
+  const chapterCache=createChapterCache({
+    bus:()=>buildBusInterior(scene,colliders,{box,ball,cyl,sign,mat}),
+    airport:()=>buildAirport(scene,colliders,{box,ball,cyl,sign,mat}),
+    road:()=>buildRoute66(scene,colliders,{box,ball,cyl,sign,mat}),
+    desert:()=>buildDesert(scene,colliders,{box,ball,cyl,sign,mat})
+  });
   const extraOutdoorStart=scene.children.length;
   // Fase 1 ampliada: café da manhã jogável dentro da casa, sem mexer no restante do mundo.
   const coffeeTable=box(scene,1.35,.16,1.05,wood,-15.5,.87,-11.25);
@@ -457,11 +462,15 @@ export function buildWorld(scene){
   const lateOutdoorNodes=scene.children.slice(extraOutdoorStart).filter(node=>!objectiveHolders.has(node));
   const outdoorRoot=new THREE.Group();outdoorRoot.name='Capítulos 00–01 · Fazenda e Rodoviária';
   outdoorRoot.add(...originalOutdoorNodes,...lateOutdoorNodes);scene.add(outdoorRoot);
-  // The bus/airport/road/desert register their colliders only when active.
-  // At this point the collider array therefore contains ONLY the original world.
+  // Hubs posteriores ainda não existem; colliders ativos são apenas do outdoor.
   const originalColliders=colliders.slice();
   let panteraExcitedUntil=0,gateOpened=false,lastDogTime=0;
-  return {markers,colliders,originalColliders,outdoorRoot,bus,bike,city,busInterior,airport,road,desert,pantera,clouds,sun,radio,ticket,suitcase,packingProps,chickens,
+  return {markers,colliders,originalColliders,outdoorRoot,bus,bike,city,pantera,clouds,sun,radio,ticket,suitcase,packingProps,chickens,
+    get busInterior(){return chapterCache.peek('bus');},
+    get airport(){return chapterCache.peek('airport');},
+    get road(){return chapterCache.peek('road');},
+    get desert(){return chapterCache.peek('desert');},
+    loadedChapters(){return chapterCache.names();},
     openGate(){
       if(gateOpened)return;
       gateOpened=true;
@@ -476,12 +485,15 @@ export function buildWorld(scene){
     },
     isInsideHouse,
     setChapter(step){
-      applyChapterLayers(step,outdoorRoot,colliders,originalColliders,{busInterior,airport,road,desert});
+      const active=chapterAt(step);
+      if(active!=='outdoor')chapterCache.get(active);
+      // Só os hubs efetivamente criados participam da ativação/desativação.
+      applyChapterLayers(step,outdoorRoot,colliders,originalColliders,chapterCache.loaded());
       windHat.visible=step===11;
-      desert.setStep(step);
+      chapterCache.peek('desert')?.setStep(step);
     },
-    setSoundFixed(fixed){busInterior.setSoundFixed(fixed);},
-    setShowActive(on){busInterior.setDancing(on);},
+    setSoundFixed(fixed){chapterCache.peek('bus')?.setSoundFixed(fixed);},
+    setShowActive(on){chapterCache.peek('bus')?.setDancing(on);},
 
     setTarget(id){for(const o of Object.values(markers))o.holder.visible=o.id===id;},
     setPacked(ids){
@@ -528,10 +540,10 @@ export function buildWorld(scene){
       chickens.forEach((hen,i)=>{hen.position.y=Math.sin(time*3.3+i)*.022;hen.rotation.x=Math.sin(time*2.5+i)*.05;});
       }
       if(step>=7&&step<=11)city.update(time);
-      if(step>=12&&step<AIRPORT_START)busInterior.update(time);
-      if(step>=AIRPORT_START&&step<ROAD_START)airport.update(time);
-      if(step>=ROAD_START&&step<DESERT_START)road.update(time,step);
-      if(step>=DESERT_START)desert.update(time);
+      if(step>=12&&step<AIRPORT_START)chapterCache.peek('bus')?.update(time);
+      if(step>=AIRPORT_START&&step<ROAD_START)chapterCache.peek('airport')?.update(time);
+      if(step>=ROAD_START&&step<DESERT_START)chapterCache.peek('road')?.update(time,step);
+      if(step>=DESERT_START)chapterCache.peek('desert')?.update(time);
       if(step===11){
         windHat.position.set(94.0+Math.sin(time*2.3)*.68,1.35+Math.abs(Math.sin(time*3.0))*.48,2.7+Math.cos(time*1.4)*.43);
         windHat.rotation.y=time*2.2;

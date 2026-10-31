@@ -747,7 +747,8 @@ function render(now){
   if(DEBUG){
     frameCounter++;
     if(now-fpsStart>1000){fps=frameCounter*1000/(now-fpsStart||1);fpsStart=now;frameCounter=0;}
-    ui.debug.textContent='FPS: '+Math.round(fps)+' | PASSO: '+step+' | x:'+Math.round(actors[heroId].position.x)+' z:'+Math.round(actors[heroId].position.z);
+    const loaded=world.loadedChapters().join(',')||'fazenda/cidade';
+    ui.debug.textContent='FPS: '+Math.round(fps)+' | PASSO: '+step+' | x:'+Math.round(actors[heroId].position.x)+' z:'+Math.round(actors[heroId].position.z)+' | Hubs: '+loaded+' | Draw calls: '+renderer.info.render.calls;
   }
 }
 function start(){

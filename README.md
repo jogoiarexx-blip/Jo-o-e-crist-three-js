@@ -1,6 +1,14 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.6 — controles unificados, save da conclusão preservado e menu sem simulação desnecessária).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.7 — hubs criados sob demanda, reaproveitamento de cenários e diagnóstico de renderização).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+
+## QA-06 — Montagem sob demanda dos ambientes (v0.6.7)
+
+- Fazenda/Rodoviária continuam no cenário inicial; ônibus, aeroporto, Route 66 e deserto **só são construídos quando visitados**, em vez de criar os quatro no carregamento da página.
+- Cada hub criado permanece em cache, preservando malhas e colisores para reentradas; apenas o capítulo ativo tem colisões ativas.
+- `?debug=1` agora apresenta quais hubs já foram carregados e a quantidade de draw calls do último quadro.
+- Novo teste da ordem de entrada, ausência de construção prematura, cache e colisões exclusivas. Esta revisão reduz alocações antecipadas, mas não implementa pré-carregamento assíncrono nem descarte de geometria do cache.
+- [Relatório e limitações QA-06](QA-06-CARREGAMENTO-SOB-DEMANDA.md).
 
 ## QA-05 — Primeira execução do plano-mestre (v0.6.6)
 
