@@ -104,7 +104,9 @@ test('o runtime utiliza uma fonte única para transição e retomada, sem reset 
   assert.match(main,/chapterTransitionAt\(step\)/);
   assert.match(main,/chapterEntryPosition\(chapterEntry,data.hero\)/);
   assert.match(main,/showDialogue\(transition.lines\)/);
-  assert.doesNotMatch(main,/if\(activeStep===6\)\{/);
+  // Abrir a porteira (step 6) continua legítimo; só o teleporte manual foi retirado.
+  assert.match(main,/if\(activeStep===6\)\{world\.openGate/);
+  assert.doesNotMatch(main,/actors\[heroId\]\.position\.set\(49,0,21\)/);
   for(const [version,step,want] of [[1,8,12],[2,9,12],[3,12,12],[4,19,19],[5,27,27],[6,35,35],[7,11,11],[7,12,12],[7,18,18],[7,19,19],[7,26,26],[7,27,27],[7,34,34],[7,35,35],[7,46,46]])
     assert.equal(validateSave({version,step}).step,want);
 });
