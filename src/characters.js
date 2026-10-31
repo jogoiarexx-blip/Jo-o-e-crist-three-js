@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {updateCharacterAnimation} from './avatar-glb.js';
 const material=(c)=>new THREE.MeshStandardMaterial({color:c,roughness:.93,flatShading:true});
 const skin=material('#c18b65'), skin2=material('#d0a17c'),shoe=material('#483b32');
 function roundedBox(g,w,h,d,c,x,y,z){
@@ -59,7 +60,7 @@ export function createElder(id){
   }
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(.6,18),new THREE.MeshBasicMaterial({color:'#172a26',transparent:true,opacity:.2,depthWrite:false}));
   shadow.rotation.x=-Math.PI/2;shadow.position.y=.018;root.add(shadow);
-  root.userData={id,arms,legs,head,body,shadow,eyes,mouth,hat:joao?g.userData.hat:null,moving:0,phase:0,gesture:'',gestureTime:0};
+  root.userData={id,arms,legs,head,body,shadow,eyes,mouth,hat:joao?g.userData.hat:null,proceduralModel:g,avatarModel:null,avatarAnimation:null,dance:false,moving:0,phase:0,gesture:'',gestureTime:0};
   return root;
 }
 export function gestureElder(root,gesture='talk',duration=1.6){
@@ -68,7 +69,15 @@ export function gestureElder(root,gesture='talk',duration=1.6){
   root.userData.gestureTime=duration;
 }
 export function animateElder(root,dt,speed,time){
-  if(!root)return;const d=root.userData;d.phase+=dt*(speed>.1?8.4+speed*.45:2.5);
+  if(!root)return;
+  const d=root.userData;
+  if(d.avatarAnimation){
+    d.gestureTime=Math.max(0,d.gestureTime-dt);
+    if(d.gestureTime<=0)d.gesture='';
+    updateCharacterAnimation(root,dt);
+    return;
+  }
+  d.phase+=dt*(speed>.1?8.4+speed*.45:2.5);
   const sway=Math.sin(d.phase)*Math.min(.57,speed*.12);
   d.legs[0].rotation.x=sway;d.legs[1].rotation.x=-sway;
   d.gestureTime=Math.max(0,d.gestureTime-dt);

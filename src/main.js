@@ -15,6 +15,7 @@ import {DESERT_START,DESERT_SPAWN,DESERT_CHOICES,DESERT_SCENES,checkDesertAnswer
 import {canUseObjective} from './interaction-anchors.js';
 import {findChapterTransition,chapterTransitionAt,chapterEntryPosition} from './chapter-transitions.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
+import {loadAllCharacterGlbs} from './avatar-glb.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
 const el=id=>document.getElementById(id);
@@ -124,6 +125,7 @@ function updateMission(){
   world.setPacked?.(packing);
   world.setSoundFixed?.(step>=17);
   world.setShowActive?.(step===17);
+  for(const id of ['joao','crist'])if(actors?.[id])actors[id].userData.dance=step===17;
   world.road?.setDriving?.(!!roadRun);
   ui.desertHud.hidden=step<DESERT_START||step>=FINAL_STEP;
   world.desert?.setCarrier?.(actors?.joao?.position);
@@ -857,6 +859,12 @@ function setup(){
   actors.joao.position.set(-1.5,0,5);actors.crist.position.set(1.5,0,3);
   actors.joao.rotation.y=actors.crist.rotation.y=1.1;
   scene.add(actors.joao,actors.crist);
+  // GLBs carregam de forma assíncrona e substituem os placeholders in-place:
+  // o estado, a posição, o raio de colisão e a câmera continuam no mesmo root.
+  loadAllCharacterGlbs(actors,{
+    onLoaded:result=>console.info('[Avatares GLB]',result.id,result.clips.join(', ')),
+    onError:(id,error)=>console.warn('[Avatares GLB] '+id+' indisponível; fallback procedural mantido:',error)
+  });
   for(const id of ['lotteryTicket','lotteryResult']){
     const target=el(id);
     for(const n of LOTTERY_NUMBERS){

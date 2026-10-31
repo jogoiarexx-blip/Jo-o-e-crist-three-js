@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.3 — QA-03: continuidade narrativa e transições entre capítulos).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.4 — integração dos GLBs de João e Crist com animações originais).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -11,6 +11,31 @@ https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 **Celular:** analógico à esquerda, botões AÇÃO / TROCAR / ESQUIVAR, arrastar a tela gira a câmera.
 
 **Gamepad:** analógico esquerdo move, direito gira a câmera, A interage, B esquiva, Y troca personagem, Start pausa (diálogos e bicicleta estão acessíveis por teclado/touch; integração completa do gamepad seguirá).
+
+## Substituição dos protagonistas — GLB (v0.6.4)
+
+Os modelos procedurais dos protagonistas foram substituídos por **carregamento dinâmico dos modelos próprios do criador**. A integração usa os dois GLBs enviados, sem alterar a campanha, os controles ou os saves.
+
+**Arquivos necessários no repositório (os binários devem ser enviados à pasta abaixo):**
+
+- `assets/characters/JOAO.glb` — João, 1,70 m, caminhada, corrida, dança e comemoração.
+- `assets/characters/CRIST.glb` — Crist, 1,70 m, caminhada, corrida, duas danças, comemoração, aceno e abrir porta.
+
+**Importante:** os binários ainda precisam estar fisicamente nessa pasta do repositório para aparecerem no GitHub Pages. O código está integrado e usa automaticamente o GLB quando o arquivo existe; se ele não estiver publicado, **continua exibindo o personagem procedural como fallback** sem travar o jogo.
+
+Para publicar os assets, extraia o arquivo `AVATARES_JOAO_CRIST_OTIMIZADOS.zip` fornecido na conversa, abra a pasta `assets/characters/` do repositório, envie os arquivos `JOAO.glb` e `CRIST.glb` e confirme o commit. Não é necessário alterar nomes ou código.
+
+### O que muda na experiência
+
+- O `GLTFLoader` carrega os GLBs em segundo plano, evitando bloquear o início da partida.
+- O avatar importado substitui a malha procedural **dentro do mesmo root**, preservando posição, rotação, companheiro, câmera e detecção de obstáculos.
+- Uma pose de repouso é extraída da animação Walking quando não há Idle no arquivo, evitando a T-pose.
+- Locomoção alterna caminhada/corrida com transição suave; apresentação no ônibus usa dança; comemoração usa Victory_Cheer. Crist acena durante alguns diálogos.
+- As animações do esqueleto não dirigem o deslocamento no mapa: a movimentação do jogador continua controlada pela física simplificada já existente.
+- Modelos otimizados: João 13,9 → **3,0 MiB**; Crist 37,4 → **4,5 MiB**, com os esqueletos e 4/7 clipes preservados e texturas reduzidas de 2048/4096 para 1024 px.
+- Em caso de asset ausente/erro WebGL, o fallback original permanece disponível.
+
+**Limitações pendentes:** testar renderização e orientação em navegador após o upload de ambos os arquivos; conferir posição de chapéu integrado ao GLB e gestos especiais; otimização de GPU, frustum e animações. O tamanho foi verificado localmente e os GLBs compactados foram validados estruturalmente, mas não homologados visualmente em Android.
 
 ## QA-03 — Continuidade narrativa e transições (v0.6.3)
 
