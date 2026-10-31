@@ -2,13 +2,13 @@
 // Dados puros: uma única fonte para spawn, câmera e contexto de cada viagem.
 export const CHAPTER_TRANSITIONS=Object.freeze([
   Object.freeze({
-    from:6,to:7,chapter:'RODOVIÁRIA',spawn:Object.freeze({x:49,z:21}),
-    companionOffset:Object.freeze({x:-1.5,z:-1}),camera:Object.freeze({yaw:1.12,zoom:8.2}),
-    message:'Os dois chegam à cidade. Primeiro a praça, depois o terminal.',
+    from:6,to:7,chapter:'RODOVIÁRIA',continuous:true,spawn:Object.freeze({x:15.8,z:5.05}),
+    companionOffset:Object.freeze({x:-1.3,z:-.5}),camera:Object.freeze({yaw:1.12,zoom:8.2}),
+    message:'Porteira aberta! Siga pelo caminho até a praça da cidade.',
     lines:Object.freeze([
-      ['NARRADOR','O ônibus do sítio fica para trás. Depois de uma viagem pela estrada de terra, João e Crist chegam à cidade.'],
-      ['JOÃO','Olha, Crist! Tem mais gente nessa praça que no leilão da fazenda!'],
-      ['CRIST','Vamos ler as informações da rodoviária. Desta vez, sem adivinhar o destino.']
+      ['NARRADOR','A porteira está aberta. A estrada continua até a praça; João e Crist podem seguir a pé, sem sair deste mapa.'],
+      ['JOÃO','Olha, Crist! Já dá pra ver as casas da cidade lá adiante. Vamos andando!'],
+      ['CRIST','Siga pela estrada até o painel da praça. Depois procuramos a rodoviária com calma.']
     ])
   }),
   Object.freeze({

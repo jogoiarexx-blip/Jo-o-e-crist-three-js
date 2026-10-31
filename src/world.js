@@ -327,6 +327,14 @@ export function buildWorld(scene){
   box(scene,180,.06,.13,mat('#f4e4c8'),40,.104,17.8);
   box(scene,17,.08,2.9,dirt,-10,.11,1.6);
   box(scene,13,.09,2.2,dirt,3,.12,4);
+  // Trilha contínua da porteira até a praça: toda a área usa o mesmo mundo.
+  // Faixas rasas apenas visuais; nenhuma parede ou collider novo no percurso.
+  box(scene,33,.07,2.7,dirt,29.4,.13,5.0);
+  box(scene,13,.07,2.45,dirt,51,.13,5.0);
+  const footpath=mat('#b9b09a');
+  box(scene,3.1,.07,14.2,footpath,51,.13,12.0);
+  box(scene,6.5,.07,2.7,footpath,53.4,.13,19.2);
+  sign(scene,'CAMINHO PARA A CIDADE',25.5,2.7,8.2,7.5,.75,'#436044');
   box(scene,16,.12,3.7,mat('#9fa4a0'),78,.1,3.9);
   box(scene,29,.12,3.4,mat('#a8a9a2'),91,.1,1.0);
   const colliders=[];

@@ -11,7 +11,7 @@ export const QUESTS=[
   {id:'suitcase',title:'Arrume as malas',hint:'Entre na casa, pegue os documentos na escrivaninha, separe as roupas e a farofa; depois feche a mala no quarto.'},
   {id:'pantera',title:'Despeça-se de Pantera',hint:'Uma boa aventura merece uma despedida.'},
   {id:'gate',title:'Abra a porteira da fazenda',hint:'Siga a cerca até a porteira de madeira, perto da estrada. Abra-a antes de sair.'},
-  {id:'cityWelcome',title:'Conheça a praça e encontre a rodoviária',hint:'Na praça, leia o painel de informações e encontre a rodoviária. Você também pode conversar com moradores.'},
+  {id:'cityWelcome',title:'Caminhe da porteira até a praça',hint:'Siga a trilha e a estrada a pé até o painel da praça; a Fazenda e a Rodoviária ficam no mesmo mapa.'},
   {id:'crossing',title:'Atravesse a faixa com cuidado',hint:'Vá à faixa de pedestres perto da rodoviária. Cuidado com o ciclista apressado!'},
   {id:'cityBag',title:'Recupere a mala certa',hint:'A bagagem foi parar no carrinho do carregador. Troque para Crist e compare a etiqueta do comprovante.'},
   {id:'cityClerk',title:'Confira o portão das passagens',hint:'Com Crist, examine as passagens no guichê e encontre o portão correto para o aeroporto.'},

@@ -16,6 +16,7 @@ import {ROAD_START,ROAD_CENTER,ROAD_SPAWN,ROAD_CHOICES,ROAD_SCENES,ROAD_DRIVES,c
 import {DESERT_START,DESERT_SPAWN,DESERT_CHOICES,DESERT_SCENES,checkDesertAnswer,findDesertNpc,isDesertShade,advanceDesertHeat,desertHeatLabel,desertCarryActive} from './desert-state.js';
 import {canUseObjective} from './interaction-anchors.js';
 import {findChapterTransition,chapterTransitionAt,chapterEntryPosition} from './chapter-transitions.js';
+import {gateFollowerWaypoint,canSnapDistantCompanion,companionFollowSpeed} from './outdoor-continuity.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
 import {canSwitchHero,isCompletedSave,shouldSimulateWorld} from './game-state.js';
 import {LOTTERY_STAGE,nextLotteryStage,lotteryStageLabel} from './lottery-state.js';
@@ -184,20 +185,23 @@ function advanceTo(next){
   step=destination;
   if(step===17&&previous!==17){rhythmProgress=0;saveRhythm();}
   if(transition){
-    const positions=chapterEntryPosition(transition,heroId);
-    for(const id of ['joao','crist'])
-      actors[id].position.set(positions[id].x,0,positions[id].z);
-    yaw=transition.camera.yaw;
-    zoom=transition.camera.zoom;
+    // Fazenda e Rodoviária são fisicamente ligadas. A saída da porteira
+    // preserva as posições de ambos e a câmera atual, sem corte/teleporte.
+    if(!transition.continuous){
+      const positions=chapterEntryPosition(transition,heroId);
+      for(const id of ['joao','crist'])
+        actors[id].position.set(positions[id].x,0,positions[id].z);
+      yaw=transition.camera.yaw;
+      zoom=transition.camera.zoom;
+    }
     walking={x:0,z:0};
     playerVelocity=0;
-    // New chapter begins only after both elders are safely in the new hub.
     if(step===DESERT_START)desertHeat=0;
   }
   writeSave();
   updateMission();
   if(transition){
-    snapCamera();
+    if(!transition.continuous)snapCamera();
     notify(transition.message);
     showDialogue(transition.lines);
   }
@@ -627,12 +631,19 @@ function updateCompanion(dt){
     tx=nearDoorX;
     tz=doorwayDist>.68?nearDoorZ:(companionInside?-7.46:-9.55);
   }
+  const continuousOutdoor=step<BUS_START;
+  // Depois de abrir a porteira, o acompanhante deve atravessar o vão
+  // da cerca antes de tentar cortar diretamente para a cidade.
+  if(continuousOutdoor&&step>=7&&!meInside&&!companionInside){
+    const gateWaypoint=gateFollowerWaypoint(me.position,other.position);
+    if(gateWaypoint){tx=gateWaypoint.x;tz=gateWaypoint.z;}
+  }
   const dx=tx-other.position.x,dz=tz-other.position.z,dist=Math.hypot(dx,dz);
-  if(dist>16&&meInside===companionInside&&!blocked(tx,tz,.38)){
+  if(canSnapDistantCompanion(dist,meInside===companionInside,continuousOutdoor)&&!blocked(tx,tz,.38)){
     other.position.set(tx,0,tz);other.userData.moving=0;return;
   }
   if(dist>.78){
-    const desiredSpeed=Math.min(4.15,dist*2.3);
+    const desiredSpeed=companionFollowSpeed(dist,continuousOutdoor);
     const movement=move(other,dx/dist*desiredSpeed,dz/dist*desiredSpeed,dt);
     other.userData.moving=movement.speed;
     if(movement.speed>.035){
@@ -818,7 +829,7 @@ function start(){
     return;
   }
   if(step===0)showDialogue(INTRO,()=>notify('Caminhe até o café dentro da casa para começar o dia.'));
-  else if(step===7)notify('Bem-vindos à cidade! Procure o painel de informações da praça.');
+  else if(step===7)notify('A porteira já está aberta. Caminhem pela estrada até o painel da praça.');
   else if(step===BUS_START)notify('Vocês estão dentro da Excursão Estelar. Encontre um lugar no corredor.');
   else if(step===AIRPORT_START)notify('Aeroporto Boa Sorte: confiram o painel e sigam até o check-in.');
   else if(step===ROAD_START)notify('Route 66: procure a placa da estrada e o mapa.');

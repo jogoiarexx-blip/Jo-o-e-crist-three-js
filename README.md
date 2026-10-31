@@ -1,6 +1,14 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.10 — correção do fluxo de conferência do bilhete e comandos de alternativas).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.11 — Fazenda e Rodoviária sem teleporte, caminhada pela porteira).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+
+## QA-10 — Caminhada contínua da porteira até a cidade (v0.6.11)
+
+- A transição do objetivo 6 (abrir a porteira) para o 7 (chegar à praça) **não muda a posição ou câmera de João/Crist**: a Fazenda e a Rodoviária são o mesmo ambiente exterior.
+- A saída real da fazenda continua bloqueada pelo collider da porteira até ela abrir. Após abrir, uma trilha visual acompanha o jogador até a praça, e o objetivo passa a orientar o caminho a pé.
+- Removido o teletransporte automático do acompanhante por distância no mapa externo. Ele acelera moderadamente para alcançar o protagonista e usa o vão da porteira para passar pela cerca. Os demais capítulos separados mantêm suas transições legítimas.
+- Ao retomar um save no início da Rodoviária (etapa 7), o spawn agora fica logo após a porteira, no mesmo mapa, em vez da praça distante. Saves mais adiantados preservados.
+- [Detalhes e testes QA-10](QA-10-PORTEIRA-SEM-TELEPORTE.md).
 
 ## QA-09 — Conferência do bilhete destravada (v0.6.10)
 
