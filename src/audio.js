@@ -1,11 +1,11 @@
 // Áudio rural procedural criado pelo WebAudio, sem música protegida e sem autoplay.
 export function createRuralAudio(){
   const AudioEngine=globalThis.AudioContext||globalThis.webkitAudioContext;
-  let ctx=null,master=null,enabled=true,elapsed=0,chirpCount=0,busActive=false,busGain=null,busOsc=null;
+  let ctx=null,master=null,enabled=true,elapsed=0,chirpCount=0,busActive=false,busGain=null,busOsc=null,roadActive=false,roadGain=null,roadOsc=null;
   function resume(){
     if(!AudioEngine)return false;
     try{
-      if(!ctx){ctx=new AudioEngine();master=ctx.createGain();master.gain.value=enabled?.65:0;master.connect(ctx.destination);if(busActive)setBusActive(true);}
+      if(!ctx){ctx=new AudioEngine();master=ctx.createGain();master.gain.value=enabled?.65:0;master.connect(ctx.destination);if(busActive)setBusActive(true);if(roadActive)setRoadActive(true);}
       if(ctx.state==='suspended')ctx.resume().catch(()=>{});
       return true;
     }catch{return false;}
@@ -22,6 +22,20 @@ export function createRuralAudio(){
     if(busGain){
       busGain.gain.cancelScheduledValues(ctx.currentTime);
       busGain.gain.setTargetAtTime(busActive?.017:.0001,ctx.currentTime,.24);
+    }
+  }
+  function setRoadActive(value){
+    roadActive=!!value;
+    if(!ctx)return;
+    if(roadActive&&!roadGain){
+      const lowpass=ctx.createBiquadFilter();lowpass.type='lowpass';lowpass.frequency.value=160;
+      roadGain=ctx.createGain();roadGain.gain.value=.0001;
+      roadOsc=ctx.createOscillator();roadOsc.type='sawtooth';roadOsc.frequency.value=63;
+      roadOsc.connect(lowpass).connect(roadGain).connect(master);roadOsc.start();
+    }
+    if(roadGain){
+      roadGain.gain.cancelScheduledValues(ctx.currentTime);
+      roadGain.gain.setTargetAtTime(roadActive?.016:.0001,ctx.currentTime,.19);
     }
   }
   function play(frequency,duration=.13,type='sine',volume=.035){
@@ -75,17 +89,17 @@ export function createRuralAudio(){
     }
   }
   return {
-    resume,play,footstep,bark,setBusActive,
+    resume,play,footstep,bark,setBusActive,setRoadActive,
     update(dt){
       if(!enabled||!ctx||ctx.state!=='running')return;
       elapsed+=Math.max(0,Math.min(.1,dt));
-      if(!busActive&&elapsed>=7.5){elapsed-=7.5;bird();}
+      if(!busActive&&!roadActive&&elapsed>=7.5){elapsed-=7.5;bird();}
     },
     setEnabled(value){
       enabled=!!value;
       if(master&&ctx){master.gain.cancelScheduledValues(ctx.currentTime);master.gain.setTargetAtTime(enabled?.65:0,ctx.currentTime,.035);}
       if(enabled)resume();
     },
-    close(){if(ctx){busOsc?.stop();ctx.close().catch(()=>{});ctx=null;master=null;busGain=null;busOsc=null;}}
+    close(){if(ctx){busOsc?.stop();roadOsc?.stop();ctx.close().catch(()=>{});ctx=null;master=null;busGain=null;busOsc=null;roadGain=null;roadOsc=null;}}
   };
 }

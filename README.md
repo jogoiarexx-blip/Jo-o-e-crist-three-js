@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.4.0 — Capítulo 3: Aeroporto dos Perdidos acrescentado sem remover os anteriores).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Primeiro protótipo jogável (v0.5.0 — Capítulo 4: Route 66 com direção jogável, paradas e pane no deserto).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -11,6 +11,20 @@ https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 **Celular:** analógico à esquerda, botões AÇÃO / TROCAR / ESQUIVAR, arrastar a tela gira a câmera.
 
 **Gamepad:** analógico esquerdo move, direito gira a câmera, A interage, B esquiva, Y troca personagem, Start pausa (diálogos e bicicleta estão acessíveis por teclado/touch; integração completa do gamepad seguirá).
+
+## Capítulo 4 — Route 66 (v0.5.0)
+
+A campanha continua depois do Aeroporto, preservando todas as cenas e saves anteriores.
+
+- **Condução jogável em duas etapas:** van turística low poly em terceira pessoa, direção lateral por A/D, setas, analógico ou joystick do celular; o veículo segue em frente e o jogador desvia de cones, barris e caixas.
+- A direção considera tempo real (`dt`), com colisões e limites laterais. Bater provoca reação cômica e não causa game over.
+- **Paradas exploráveis:** lanchonete da Mabel, mirante da Nora, oficina do Rudy, placas de estrada, montanhas e cactos.
+- **Cooperação:** Crist lê a rota panorâmica; João revisa o radiador com o motor frio.
+- Progresso parcial da direção salvo a intervalos curtos, para retomar o trecho.
+- A pane no deserto cria o gancho para o Capítulo 5.
+- Saves v1 a v5 migram para v6. O encerramento antigo do aeroporto abre a Route 66.
+- [MD detalhado e QA da Route 66](FASE-05-ROUTE66.md).
+- Validação visual de gameplay em navegador e Android ainda pendente.
 
 ## Capítulo 3 — Aeroporto dos Perdidos (v0.4.0)
 
@@ -150,4 +164,4 @@ A prioridade atual, por solicitação explícita, é **Capítulo 1 — A Rodovi�
 
 ## Próximas prioridades
 
-**Validar em jogo o Aeroporto dos Perdidos e as transições de capítulos**, inclusive câmera, portões, interações, saves, toque e gamepad. Depois ampliar a Route 66 conforme o MD original, sem eliminar conteúdo existente.
+**Validar em jogo a Route 66** e as transições de capítulos, incluindo dirigibilidade, câmera da van, FPS, controles por toque e gamepad. Depois avançar para O Deserto Não Perdoa conforme o MD original, sem eliminar conteúdo existente.

@@ -1,6 +1,7 @@
 # Capítulo 3 — Aeroporto dos Perdidos
 
 **Versão:** v0.4.0 · Three.js · novo mini-hub jogável.
+**Continuação v0.5.0:** a Route 66 foi acrescentada em `FASE-05-ROUTE66.md`. O Aeroporto permanece integralmente no jogo.
 **Documento-mestre:** `JOAO_E_CRIST_PROPOSTA_3D.md`, capítulo 3.
 **Regra:** adicionar oito missões sem apagar Fazanda, Rodoviária, Excursão Errada, saves ou o jogo 2D.
 

@@ -39,3 +39,14 @@
 .city-choice-button:hover,.city-choice-button:focus-visible,.city-choice-button[aria-selected="true"]{background:#3a5551;border-color:#f2c66c;outline:2px solid #f2c66c44}
 .city-choice-paper .city-choice-help{font-size:11px;color:#c7c9b7;margin-bottom:0;letter-spacing:.05em}
 @media(max-width:560px){.city-choice-paper{padding:22px 16px}.city-choice-button{font-size:13px;padding:12px}.city-choice-paper p{font-size:13px}}
+
+/* Route 66: informações discretas durante a direção (teclado, touch, gamepad). */
+.road-hud{position:absolute;z-index:6;left:50%;bottom:clamp(110px,16vh,172px);transform:translateX(-50%);width:min(680px,90vw);background:rgba(17,26,30,.88);border:1px solid rgba(232,199,133,.65);padding:12px 16px;box-shadow:0 12px 38px #0006;pointer-events:none;font-family:system-ui,sans-serif}
+.road-hud[hidden]{display:none!important}
+.road-head,.road-foot{display:flex;justify-content:space-between;align-items:center;gap:15px}
+.road-head{color:#f4dfad;font-weight:900;font-size:13px;letter-spacing:.055em}
+.road-head span:last-child,.road-foot span:last-child{font-variant-numeric:tabular-nums}
+.road-track{height:8px;margin:11px 0 8px;background:#273f41;border-radius:9px;overflow:hidden}
+#roadProgress{height:100%;width:100%;transform:scaleX(0);transform-origin:left;background:#eac678}
+.road-foot{color:#d2d6cc;font-size:10px;letter-spacing:.035em}
+@media(max-width:640px){.road-hud{bottom:158px;max-width:94vw;padding:10px 12px}.road-head{font-size:10px}.road-foot{font-size:8px;flex-wrap:wrap;gap:5px}}

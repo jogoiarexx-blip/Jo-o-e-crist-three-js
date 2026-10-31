@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {QUESTS,SCENES,INTRO,getQuest,validateSave,PACKING_ITEMS,normalizePacking,nextPackingTarget,getPackingProgress,LOTTERY_NUMBERS,SAVE_VERSION,FINAL_STEP,canUsePackingItem} from '../src/story.js';
 
 test('campanha ampliada: despertar, sorteio, bilhete, conversa e TODAS as cenas antigas',()=>{
-  assert.equal(QUESTS.length,28);
-  assert.equal(FINAL_STEP,27);
-  assert.deepEqual(QUESTS.map(q=>q.id),['wake','radio','ticket','crist','suitcase','pantera','gate','cityWelcome','crossing','cityBag','cityClerk','bus','busSeat','busCrew','busCase','busInspect','busConnect','busDance','busReveal','airWelcome','airCheckin','airPassport','airFarofa','airSecurity','airGate','airRush','airBoard','done']);
+  assert.equal(QUESTS.length,36);
+  assert.equal(FINAL_STEP,35);
+  assert.deepEqual(QUESTS.map(q=>q.id),['wake','radio','ticket','crist','suitcase','pantera','gate','cityWelcome','crossing','cityBag','cityClerk','bus','busSeat','busCrew','busCase','busInspect','busConnect','busDance','busReveal','airWelcome','airCheckin','airPassport','airFarofa','airSecurity','airGate','airRush','airBoard','roadWelcome','roadRoute','roadDrive1','roadStop','roadPhoto','roadRepair','roadDrive2','roadBreakdown','done']);
   assert.equal(getQuest(99).id,'done');
   assert.equal(getQuest(-1).id,'wake');
   assert.equal(getQuest(7).id,'cityWelcome');
@@ -26,8 +26,8 @@ test('diálogos principais estão presentes',()=>{
   }
 });
 test('saves v1/v2/v3 migram sem perder os capítulos anteriores',()=>{
-  assert.equal(SAVE_VERSION,5);
-  assert.deepEqual(validateSave(null),{version:5,step:0,hero:'joao',packing:[]});
+  assert.equal(SAVE_VERSION,6);
+  assert.deepEqual(validateSave(null),{version:6,step:0,hero:'joao',packing:[]});
   assert.equal(validateSave({version:1,step:1,hero:'crist'}).step,2);
   assert.equal(validateSave({version:1,step:2,hero:'crist'}).step,3);
   assert.equal(validateSave({version:1,step:3,packing:['documents']}).step,4);
@@ -43,6 +43,8 @@ test('saves v1/v2/v3 migram sem perder os capítulos anteriores',()=>{
   assert.equal(validateSave({version:3,step:200}).step,12);
   assert.equal(validateSave({version:4,step:200}).step,19);
   assert.equal(validateSave({version:5,step:200}).step,27);
+  assert.equal(validateSave({version:6,step:200}).step,35);
+  assert.equal(validateSave({version:6,step:31}).step,31);
   assert.equal(validateSave({version:4,step:16}).step,16);
   assert.equal(validateSave({version:4,step:18,hero:'crist'}).hero,'crist');
   assert.equal(validateSave({version:1,step:-3}).step,0);
