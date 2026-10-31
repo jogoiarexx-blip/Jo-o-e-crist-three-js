@@ -8,7 +8,7 @@ test('Capítulo 1 preserva o ciclista e ônibus, adicionando praça, bagagem e g
   assert.deepEqual(QUESTS.slice(7,12).map(q=>q.id),[
     'cityWelcome','crossing','cityBag','cityClerk','bus'
   ]);
-  assert.equal(FINAL_STEP,35);
+  assert.equal(FINAL_STEP,46);
   for(let s=7;s<=11;s++)assert.ok(getQuest(s).hint);
 });
 test('três NPCs distintos com diálogos opcionais acessíveis',()=>{

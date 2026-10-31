@@ -10,8 +10,8 @@ import {isBlocked} from '../src/collision.js';
 
 test('Route 66 adiciona oito etapas sem apagar nenhum capítulo anterior',()=>{
   assert.equal(ROAD_START,27);assert.equal(ROAD_END,34);
-  assert.equal(SAVE_VERSION,6);assert.equal(FINAL_STEP,35);
-  assert.equal(QUESTS.length,36);
+  assert.equal(SAVE_VERSION,7);assert.equal(FINAL_STEP,46);
+  assert.equal(QUESTS.length,47);
   assert.deepEqual(QUESTS.slice(0,7).map(x=>x.id),
     ['wake','radio','ticket','crist','suitcase','pantera','gate']);
   assert.deepEqual(QUESTS.slice(7,12).map(x=>x.id),
@@ -22,7 +22,7 @@ test('Route 66 adiciona oito etapas sem apagar nenhum capítulo anterior',()=>{
     ['airWelcome','airCheckin','airPassport','airFarofa','airSecurity','airGate','airRush','airBoard']);
   assert.deepEqual(ROAD_QUESTS.map(x=>x.id),
     ['roadWelcome','roadRoute','roadDrive1','roadStop','roadPhoto','roadRepair','roadDrive2','roadBreakdown']);
-  assert.equal(getQuest(35).id,'done');
+  assert.equal(getQuest(35).id,'desertVan');
 });
 test('mapa da estrada mantém alvos dentro dos limites da engine e todos com diálogos',()=>{
   assert.ok(ROAD_CENTER.x>-48&&ROAD_CENTER.z<46);
@@ -102,4 +102,5 @@ test('saves antigos migram e conclusão do aeroporto inicia a estrada',()=>{
     assert.equal(validateSave({version,step}).step,expected,'save '+version+'/'+step);
   }
   assert.equal(validateSave({version:6,step:100}).step,35);
+  assert.equal(validateSave({version:7,step:100}).step,46);
 });

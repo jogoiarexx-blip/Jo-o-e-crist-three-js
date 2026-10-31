@@ -6,7 +6,7 @@ import {isBlocked,canReachInteraction} from '../src/collision.js';
 
 test('capítulo 2 soma sete etapas, sem remover Fazenda, Rodoviária ou bicicleta',()=>{
   assert.equal(BUS_START,12);assert.equal(BUS_END,18);
-  assert.equal(SAVE_VERSION,6);assert.equal(FINAL_STEP,35);assert.equal(QUESTS.length,36);
+  assert.equal(SAVE_VERSION,7);assert.equal(FINAL_STEP,46);assert.equal(QUESTS.length,47);
   assert.deepEqual(QUESTS.slice(0,12).map(q=>q.id),[
     'wake','radio','ticket','crist','suitcase','pantera','gate','cityWelcome','crossing','cityBag','cityClerk','bus'
   ]);

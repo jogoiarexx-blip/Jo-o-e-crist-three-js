@@ -1,6 +1,7 @@
 import {BUS_QUESTS} from './bus-state.js';
 import {AIRPORT_QUESTS} from './airport-state.js';
 import {ROAD_QUESTS} from './road-state.js';
+import {DESERT_QUESTS} from './desert-state.js';
 
 export const QUESTS=[
   {id:'wake',title:'Acorde e explore a casa',hint:'Use WASD, setas ou o analógico para caminhar até o café. Arraste a tela para olhar.'},
@@ -18,7 +19,8 @@ export const QUESTS=[
   ...BUS_QUESTS,
   ...AIRPORT_QUESTS,
   ...ROAD_QUESTS,
-  {id:'done',title:'Route 66 concluída!',hint:'A van parou no deserto. A próxima aventura será encontrar ajuda.'}
+  ...DESERT_QUESTS,
+  {id:'done',title:'Deserto concluído!',hint:'A van está reparada e as luzes de Las Vegas aparecem no horizonte.'}
 ];
 // Resultado inteiramente fictício, usado só no roteiro.
 export const LOTTERY_NUMBERS=Object.freeze([3,11,18,27,42,56]);
@@ -136,8 +138,8 @@ export function nextPackingTarget(value){
   const done=new Set(normalizePacking(value));
   return PACKING_ITEMS.find(item=>!done.has(item.id))?.id||'suitcase';
 }
-export const SAVE_VERSION=6;
-export const FINAL_STEP=35;
+export const SAVE_VERSION=7;
+export const FINAL_STEP=46;
 export function getPackingProgress(value){return normalizePacking(value).length;}
 export function canUsePackingItem(id,hero){
   if(id==='suitcase')return hero==='joao';
@@ -146,11 +148,11 @@ export function canUsePackingItem(id,hero){
 export function getQuest(step){
   return QUESTS[Math.min(FINAL_STEP,Math.max(0,Number.isFinite(Number(step))?Math.floor(Number(step)):0))];
 }
-// v6 acrescenta a Route 66 mantendo a mesma chave do save 3D.
-// Concluiu a v5? Retoma no início da estrada (step 27).
+// v7 acrescenta O Deserto Não Perdoa e preserva saves v1–v6.
+// Fim v6 (step 35) agora abre a exploração do deserto.
 export function validateSave(raw){
   const fallback={version:SAVE_VERSION,step:0,hero:'joao',packing:[]};
-  if(!raw||typeof raw!=='object'||![1,2,3,4,5,SAVE_VERSION].includes(raw.version))return fallback;
+  if(!raw||typeof raw!=='object'||![1,2,3,4,5,6,SAVE_VERSION].includes(raw.version))return fallback;
   const value=Number(raw.step),index=Number.isFinite(value)?Math.floor(value):0;
   let step;
   if(raw.version===1){
@@ -165,8 +167,10 @@ export function validateSave(raw){
   }else if(raw.version===4){
     step=Math.max(0,Math.min(19,index));
   }else if(raw.version===5){
-    // Fim antigo no step 27 = início do capítulo de estrada.
     step=Math.max(0,Math.min(27,index));
+  }else if(raw.version===6){
+    // O antigo fim da Route 66 (step 35) vira a abertura do deserto.
+    step=Math.max(0,Math.min(35,index));
   }else step=Math.max(0,Math.min(FINAL_STEP,index));
   const hero=raw.hero==='crist'?'crist':'joao';
   const packing=step>4?PACKING_ITEMS.map(item=>item.id):normalizePacking(raw.packing);

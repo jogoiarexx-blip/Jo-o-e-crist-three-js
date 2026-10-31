@@ -11,6 +11,7 @@ import {CITY_CHOICES,findCityNpc,checkCityAnswer} from './city-state.js';
 import {BUS_START,BUS_SPAWN,BUS_CHOICES,BUS_SCENES,RHYTHM_SEQUENCE,RHYTHM_LABELS,RHYTHM_OPTIONS,checkBusAnswer,normalizeRhythmProgress,inputRhythm,findBusNpc} from './bus-state.js';
 import {AIRPORT_START,AIRPORT_SPAWN,AIRPORT_CHOICES,AIRPORT_SCENES,checkAirportAnswer,findAirportNpc,airportRushResult} from './airport-state.js';
 import {ROAD_START,ROAD_CENTER,ROAD_SPAWN,ROAD_CHOICES,ROAD_SCENES,ROAD_DRIVES,checkRoadAnswer,findRoadNpc,initialRoadRun,normalizeRoadRun,advanceRoadRun,roadGrade} from './road-state.js';
+import {DESERT_START,DESERT_SPAWN,DESERT_CHOICES,DESERT_SCENES,checkDesertAnswer,findDesertNpc,isDesertShade,advanceDesertHeat,desertHeatLabel,desertCarryActive} from './desert-state.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
@@ -20,7 +21,7 @@ const ui={canvas:el('game'),loading:el('loading'),hud:el('hud'),mission:el('miss
   promptText:el('promptText'),toast:el('toast'),dialog:el('dialog'),speaker:el('dialogSpeaker'),
   dialogText:el('dialogText'),dialogCount:el('dialogCount'),start:el('startScreen'),
   pause:el('pauseScreen'),end:el('endScreen'),mobile:el('mobileControls'),
-  event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText'),lottery:el('lotteryPanel'),lotteryButton:el('lotteryButton'),lotteryReveal:el('lotteryReveal'),soundBtn:el('soundBtn'),choice:el('cityChoice'),choiceHeading:el('cityChoiceHeading'),choiceText:el('cityChoiceText'),choiceButtons:el('cityChoiceButtons'),roadHud:el('roadHud'),roadProgress:el('roadProgress'),roadHits:el('roadHits'),roadHeading:el('roadHeading'),roadDistance:el('roadDistance')};
+  event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText'),lottery:el('lotteryPanel'),lotteryButton:el('lotteryButton'),lotteryReveal:el('lotteryReveal'),soundBtn:el('soundBtn'),choice:el('cityChoice'),choiceHeading:el('cityChoiceHeading'),choiceText:el('cityChoiceText'),choiceButtons:el('cityChoiceButtons'),roadHud:el('roadHud'),roadProgress:el('roadProgress'),roadHits:el('roadHits'),roadHeading:el('roadHeading'),roadDistance:el('roadDistance'),desertHud:el('desertHud'),desertHeatBar:el('desertHeatBar'),desertHeatLabel:el('desertHeatLabel')};
 const SAVE_KEY='joaoCrist3DSave_v1';
 const MEMORY_KEY='joaoCrist3DFarmMemories_v1';
 const BUS_RHYTHM_KEY='joaoCrist3DBusRhythm_v1';
@@ -29,7 +30,7 @@ const DEBUG=new URLSearchParams(location.search).has('debug');
 let renderer,scene,camera,world,actors,heroId='joao',step=0,packing=[],started=false,paused=false;
 let yaw=1.12,pitch=.48,zoom=8.2,clockTime=0,lastFrame=0,toastTimer=0;
 let dialogue=null,bikeEvent=null,lotteryOpen=false,lotteryStage=0,lotteryAccepted=false,prevPad={};
-let choiceKind=null,choiceIndex=0,rhythmProgress=0,airportRush=null,roadRun=null,lastRoadSave=0;
+let choiceKind=null,choiceIndex=0,rhythmProgress=0,airportRush=null,roadRun=null,lastRoadSave=0,desertHeat=0,lastHeatWarning=0;
 function readRoadRun(stage){
   try{return normalizeRoadRun(JSON.parse(localStorage.getItem(ROAD_RUN_KEY)||'null'),stage);}
   catch{return initialRoadRun(stage);}
@@ -49,7 +50,7 @@ function puzzleDefinition(kind){
     text:'Sequência: PALMAS, PASSO, GIRO, PALMAS. Próximo movimento: '+RHYTHM_LABELS[RHYTHM_SEQUENCE[rhythmProgress]]+'.',
     options:RHYTHM_OPTIONS
   };
-  return CITY_CHOICES[kind]||BUS_CHOICES[kind]||AIRPORT_CHOICES[kind]||ROAD_CHOICES[kind]||null;
+  return CITY_CHOICES[kind]||BUS_CHOICES[kind]||AIRPORT_CHOICES[kind]||ROAD_CHOICES[kind]||DESERT_CHOICES[kind]||null;
 }
 let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null;
 let walking={x:0,z:0},lastStepSound=0;
@@ -111,7 +112,7 @@ function updateMission(){
     ui.objective.textContent='Arrume as malas — '+getPackingProgress(packing)+'/3';
     ui.hint.textContent=item?item.hint:'Itens reunidos! Troque para João e volte à mala dentro da casa.';
   }
-  el('chapter').textContent=step>=ROAD_START?'CAPÍTULO 04 · ROUTE 66':step>=AIRPORT_START?'CAPÍTULO 03 · AEROPORTO':step>=BUS_START?'CAPÍTULO 02 · EXCURSÃO ERRADA':step>=7?'CAPÍTULO 01 · RODOVIÁRIA':'CAPÍTULO 00 · FAZENDA';
+  el('chapter').textContent=step>=DESERT_START?'CAPÍTULO 05 · O DESERTO NÃO PERDOA':step>=ROAD_START?'CAPÍTULO 04 · ROUTE 66':step>=AIRPORT_START?'CAPÍTULO 03 · AEROPORTO':step>=BUS_START?'CAPÍTULO 02 · EXCURSÃO ERRADA':step>=7?'CAPÍTULO 01 · RODOVIÁRIA':'CAPÍTULO 00 · FAZENDA';
   if(step===17)ui.hint.textContent='Faça PALMAS, PASSO, GIRO, PALMAS. Ritmo: '+rhythmProgress+'/4. Vá ao centro do corredor.';
   ui.mission.hidden=step>=FINAL_STEP;
   world.setChapter?.(step);
@@ -120,6 +121,8 @@ function updateMission(){
   world.setSoundFixed?.(step>=17);
   world.setShowActive?.(step===17);
   world.road?.setDriving?.(!!roadRun);
+  ui.desertHud.hidden=step<DESERT_START||step>=FINAL_STEP;
+  world.desert?.setCarrier?.(actors?.joao?.position);
   audio?.setBusActive?.(step>=BUS_START&&step<AIRPORT_START&&!paused);
   audio?.setRoadActive?.(!!roadRun&&!paused);
   if(step>6)world.setGateOpen?.(true);
@@ -136,6 +139,13 @@ function advanceTo(next){
   }
   if(step===17&&previous!==17){rhythmProgress=0;saveRhythm();}
   writeSave();updateMission();
+  if(step===DESERT_START&&previous===34){
+    actors[heroId].position.set(DESERT_SPAWN.x,0,DESERT_SPAWN.z);
+    const other=heroId==='joao'?'crist':'joao';
+    actors[other].position.set(DESERT_SPAWN.x+.9,0,DESERT_SPAWN.z+1.0);
+    yaw=1.18;zoom=7.3;walking={x:0,z:0};desertHeat=0;
+    notify('A van parou! Inspecione o motor e procure sombra no posto.');
+  }
   if(step===ROAD_START&&previous===26){
     actors[heroId].position.set(ROAD_SPAWN.x,0,ROAD_SPAWN.z);
     const other=heroId==='joao'?'crist':'joao';
@@ -150,7 +160,7 @@ function advanceTo(next){
     yaw=1.45;zoom=7.2;walking={x:0,z:0};
     notify('A trupe deixou vocês no aeroporto! Encontrem o voo correto.');
   }
-  if((step===BUS_START&&previous===11)||(step===AIRPORT_START&&previous===18)||(step===ROAD_START&&previous===26))snapCamera();
+  if((step===BUS_START&&previous===11)||(step===AIRPORT_START&&previous===18)||(step===ROAD_START&&previous===26)||(step===DESERT_START&&previous===34))snapCamera();
   if(step===29||step===33)beginRoadDrive();
   if(step===FINAL_STEP){ui.end.hidden=false;ui.hud.hidden=true;ui.mobile.hidden=true;ui.mission.hidden=true;started=false;}
 }
@@ -198,7 +208,11 @@ function useTarget(){
       showDialogue(extra.lines,()=>notify('Lembrança da Fazenda: '+memories.size+'/'+FARM_MEMORIES.length+'.'));
       return;
     }
-    if(step>=ROAD_START&&step<FINAL_STEP){
+    if(step>=DESERT_START&&step<FINAL_STEP){
+      const npc=findDesertNpc(actors[heroId].position);
+      if(npc){showDialogue(npc.lines);return;}
+      notify('Explore o posto, procure água, sombra e o mecânico.');
+    }else if(step>=ROAD_START&&step<DESERT_START){
       const npc=findRoadNpc(actors[heroId].position);
       if(npc){showDialogue(npc.lines);return;}
       notify('Explore a estrada e procure a placa, a lanchonete ou a oficina.');
@@ -217,6 +231,17 @@ function useTarget(){
     }else notify('Siga o marcador da missão ou explore a Fazenda em busca de histórias.');
     return;
   }
+  if(step===35&&heroId!=='joao'){notify('João precisa investigar a van. Use TAB ou TROCAR.');return;}
+  if(step===38&&heroId!=='crist'){notify('Crist deve ler o aviso da água. Use TAB ou TROCAR.');return;}
+  if(step===38){openCityChoice('desertWater');return;}
+  if(step===39&&heroId!=='joao'){notify('João deve encher o galão. Use TAB ou TROCAR.');return;}
+  if(step===40&&heroId!=='joao'){notify('João está levando o galão até a van. Use TAB ou TROCAR.');return;}
+  if(step===42&&heroId!=='joao'){notify('João escolhe a peça da mangueira. Use TAB ou TROCAR.');return;}
+  if(step===42){openCityChoice('desertHose');return;}
+  if(step===43&&heroId!=='joao'){notify('João termina a revisão com o motor frio. Use TAB ou TROCAR.');return;}
+  if(step===43){openCityChoice('desertCool');return;}
+  if(step===44&&heroId!=='crist'){notify('Crist precisa conferir as placas. Use TAB ou TROCAR.');return;}
+  if(step===44){openCityChoice('desertSigns');return;}
   if(step===28&&heroId!=='crist'){notify('Crist deve ler o mapa da estrada. Use TAB ou TROCAR.');return;}
   if(step===28){openCityChoice('roadRoute');return;}
   if(step===32&&heroId!=='joao'){notify('João precisa revisar a van com o motor frio. Use TAB ou TROCAR.');return;}
@@ -269,7 +294,7 @@ function useTarget(){
     return;
   }
   const activeStep=step;
-  const scenes=[SCENES.wake,SCENES.radio,SCENES.ticket,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,SCENES.cityWelcome,null,null,null,SCENES.bus,BUS_SCENES.seat,BUS_SCENES.crew,null,null,null,null,BUS_SCENES.reveal,AIRPORT_SCENES.welcome,null,null,null,null,null,null,AIRPORT_SCENES.board,ROAD_SCENES.welcome,null,null,ROAD_SCENES.stop,ROAD_SCENES.photo,null,null,ROAD_SCENES.breakdown];
+  const scenes=[SCENES.wake,SCENES.radio,SCENES.ticket,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,SCENES.cityWelcome,null,null,null,SCENES.bus,BUS_SCENES.seat,BUS_SCENES.crew,null,null,null,null,BUS_SCENES.reveal,AIRPORT_SCENES.welcome,null,null,null,null,null,null,AIRPORT_SCENES.board,ROAD_SCENES.welcome,null,null,ROAD_SCENES.stop,ROAD_SCENES.photo,null,null,ROAD_SCENES.breakdown,DESERT_SCENES.arrival,DESERT_SCENES.shade,DESERT_SCENES.can,null,DESERT_SCENES.fill,DESERT_SCENES.carry,DESERT_SCENES.mechanic,null,null,null,DESERT_SCENES.lookout];
   const lines=scenes[activeStep];
   if(!lines)return;
   if(activeStep===2)winSound();else tone(600,.13,'triangle',.03);
@@ -348,7 +373,7 @@ function openCityChoice(kind){
   const puzzle=puzzleDefinition(kind);
   if(!puzzle||dialogue||lotteryOpen||choiceKind||paused)return;
   choiceKind=kind;choiceIndex=0;
-  ui.choice.querySelector('.eyebrow').textContent=kind in ROAD_CHOICES?'CAPÍTULO 04 · ROUTE 66':kind==='rhythm'?'CAPÍTULO 02 · APRESENTAÇÃO':kind in AIRPORT_CHOICES?'CAPÍTULO 03 · AEROPORTO':kind in BUS_CHOICES?'CAPÍTULO 02 · EXCURSÃO ERRADA':'CAPÍTULO 01 · RODOVIÁRIA';
+  ui.choice.querySelector('.eyebrow').textContent=kind in DESERT_CHOICES?'CAPÍTULO 05 · DESERTO':kind in ROAD_CHOICES?'CAPÍTULO 04 · ROUTE 66':kind==='rhythm'?'CAPÍTULO 02 · APRESENTAÇÃO':kind in AIRPORT_CHOICES?'CAPÍTULO 03 · AEROPORTO':kind in BUS_CHOICES?'CAPÍTULO 02 · EXCURSÃO ERRADA':'CAPÍTULO 01 · RODOVIÁRIA';
   ui.choiceHeading.textContent=puzzle.heading;
   ui.choiceText.textContent=puzzle.text;
   ui.choiceButtons.replaceChildren();
@@ -394,7 +419,7 @@ function submitCityChoice(optionId){
     }
     return;
   }
-  const correct=kind in ROAD_CHOICES?checkRoadAnswer(kind,optionId):kind in CITY_CHOICES?checkCityAnswer(kind,optionId):kind in BUS_CHOICES?checkBusAnswer(kind,optionId):checkAirportAnswer(kind,optionId);
+  const correct=kind in DESERT_CHOICES?checkDesertAnswer(kind,optionId):kind in ROAD_CHOICES?checkRoadAnswer(kind,optionId):kind in CITY_CHOICES?checkCityAnswer(kind,optionId):kind in BUS_CHOICES?checkBusAnswer(kind,optionId):checkAirportAnswer(kind,optionId);
   choiceKind=null;ui.choice.hidden=true;ui.mobile.hidden=paused||!mobile;
   if(correct){
     tone(640,.2,'triangle',.033);
@@ -404,7 +429,11 @@ function submitCityChoice(optionId){
       connect:{lines:BUS_SCENES.connect,next:17},
       checkin:{lines:AIRPORT_SCENES.checkin,next:21},passport:{lines:AIRPORT_SCENES.passport,next:22},
       farofa:{lines:AIRPORT_SCENES.farofa,next:23},security:{lines:AIRPORT_SCENES.security,next:24},
-      gate:{lines:AIRPORT_SCENES.gate,next:25},roadRoute:{lines:ROAD_SCENES.route,next:29},roadRepair:{lines:ROAD_SCENES.repair,next:33}
+      gate:{lines:AIRPORT_SCENES.gate,next:25},roadRoute:{lines:ROAD_SCENES.route,next:29},roadRepair:{lines:ROAD_SCENES.repair,next:33},
+      desertWater:{lines:DESERT_SCENES.water,next:39},
+      desertHose:{lines:DESERT_SCENES.hose,next:43},
+      desertCool:{lines:DESERT_SCENES.cool,next:44},
+      desertSigns:{lines:DESERT_SCENES.signs,next:45}
     };
     const event=completed[kind];
     if(event)showDialogue(event.lines,()=>advanceTo(event.next));
@@ -413,7 +442,7 @@ function submitCityChoice(optionId){
     const wrong={bag:SCENES.bagWrong,route:SCENES.routeWrong,case:BUS_SCENES.caseWrong,
       inspect:BUS_SCENES.inspectWrong,connect:BUS_SCENES.connectWrong,
       checkin:AIRPORT_SCENES.wrong,passport:AIRPORT_SCENES.wrong,farofa:AIRPORT_SCENES.wrong,
-      security:AIRPORT_SCENES.wrong,gate:AIRPORT_SCENES.wrong,roadRoute:ROAD_SCENES.wrong,roadRepair:ROAD_SCENES.wrong};
+      security:AIRPORT_SCENES.wrong,gate:AIRPORT_SCENES.wrong,roadRoute:ROAD_SCENES.wrong,roadRepair:ROAD_SCENES.wrong,desertWater:DESERT_SCENES.wrong,desertHose:DESERT_SCENES.wrong,desertCool:DESERT_SCENES.wrong,desertSigns:DESERT_SCENES.wrong};
     if(wrong[kind])showDialogue(wrong[kind]);
   }
 }
@@ -607,6 +636,18 @@ function update(dt){
   pollGamepadActions();
   if(paused)return;
   if(step<=6||(step>=BUS_START&&step<AIRPORT_START))audio?.update(dt);
+  if(step>=DESERT_START&&step<FINAL_STEP){
+    const pos=actors[heroId].position;
+    const shade=isDesertShade(pos.x,pos.z);
+    desertHeat=advanceDesertHeat(desertHeat,shade,dt);
+    ui.desertHeatBar.style.transform='scaleX('+(desertHeat/85)+')';
+    ui.desertHeatLabel.textContent=(shade?'SOMBRA · ':'SOL · ')+desertHeatLabel(desertHeat);
+    if(desertHeat>65&&clockTime-lastHeatWarning>17){
+      notify('Calor forte! A cobertura do posto oferece sombra para descansar.');
+      lastHeatWarning=clockTime;
+    }
+    world.desert?.setCarrier?.(actors.joao.position);
+  }
   if(roadRun){
     updateRoadDrive(dt);
     playerVelocity=0;
@@ -671,10 +712,11 @@ function update(dt){
     const cityNpc=step>=7&&step<BUS_START&&!close?findCityNpc(pos):null;
     const busNpc=step>=BUS_START&&step<AIRPORT_START&&!close?findBusNpc(pos):null;
     const airportNpc=step>=AIRPORT_START&&step<ROAD_START&&!close?findAirportNpc(pos):null;
-    const roadNpc=step>=ROAD_START&&!close?findRoadNpc(pos):null;
-    ui.prompt.hidden=(!close&&!extra&&!cityNpc&&!busNpc&&!airportNpc&&!roadNpc)||!!dialogue||!!bikeEvent||!!airportRush||lotteryOpen||!!choiceKind||!!roadRun;
+    const roadNpc=step>=ROAD_START&&step<DESERT_START&&!close?findRoadNpc(pos):null;
+    const desertNpc=step>=DESERT_START&&!close?findDesertNpc(pos):null;
+    ui.prompt.hidden=(!close&&!extra&&!cityNpc&&!busNpc&&!airportNpc&&!roadNpc&&!desertNpc)||!!dialogue||!!bikeEvent||!!airportRush||lotteryOpen||!!choiceKind||!!roadRun;
     ui.promptText.textContent=close?(step===8?'Atravesse com cuidado':marker.label):
-      extra?'Conhecer: '+extra.name:cityNpc?'Conversar: '+cityNpc.name:busNpc?'Conversar: '+busNpc.name:airportNpc?'Conversar: '+airportNpc.name:roadNpc?'Conversar: '+roadNpc.name:'Interagir';
+      extra?'Conhecer: '+extra.name:cityNpc?'Conversar: '+cityNpc.name:busNpc?'Conversar: '+busNpc.name:airportNpc?'Conversar: '+airportNpc.name:roadNpc?'Conversar: '+roadNpc.name:desertNpc?'Conversar: '+desertNpc.name:'Interagir';
   }else ui.prompt.hidden=true;
   updateCamera(dt);
 }
@@ -706,12 +748,14 @@ function start(){
     step===9?{x:79,z:2.7}:
     step===10?{x:71,z:2.0}:
     step===11?{x:91,z:2.5}:
+    step>=DESERT_START?(step===35?{x:DESERT_SPAWN.x,z:DESERT_SPAWN.z}:step===36?{x:-68,z:-17.8}:step===37?{x:-72,z:-19.2}:step===38?{x:-76.3,z:-5.5}:step===39?{x:-68.3,z:-4.0}:step===40?{x:-68,z:-4.0}:step===41?{x:-52,z:-15}:step>=44?{x:-54,z:-4}:{x:-60.1,z:-13}):
     step>=ROAD_START?(step===30?{x:-35,z:30}:step===31?{x:-22,z:34}:step===32?{x:-20,z:25}:step===34?{x:-20,z:25}:{x:ROAD_SPAWN.x,z:ROAD_SPAWN.z}):
     step>=AIRPORT_START?{x:AIRPORT_SPAWN.x,z:AIRPORT_SPAWN.z}:{x:BUS_SPAWN.x,z:BUS_SPAWN.z};
   actors.joao.position.set(spawn.x,0,spawn.z);
   actors.crist.position.set(spawn.x+(step>=BUS_START?.85:1.3),0,spawn.z+(step>=BUS_START?-1.2:.5));
   setHero(data.hero,true);started=true;paused=false;
-  if(step>=ROAD_START){yaw=1.25;zoom=8.0;}
+  if(step>=DESERT_START){yaw=1.18;zoom=7.3;}
+  else if(step>=ROAD_START){yaw=1.25;zoom=8.0;}
   else if(step>=AIRPORT_START){yaw=1.45;zoom=7.2;}
   else if(step>=BUS_START){yaw=1.4;zoom=6.4;}
   walking={x:0,z:0};
@@ -722,6 +766,7 @@ function start(){
   else if(step===BUS_START)notify('Vocês estão dentro da Excursão Estelar. Encontre um lugar no corredor.');
   else if(step===AIRPORT_START)notify('Aeroporto Boa Sorte: confiram o painel e sigam até o check-in.');
   else if(step===ROAD_START)notify('Route 66: procure a placa da estrada e o mapa.');
+  else if(step===DESERT_START)notify('O Deserto Não Perdoa: a van precisa de conserto.');
   else notify('Progresso recuperado: '+getQuest(step).title);
   ui.soundBtn.textContent=soundEnabled?'♪':'×';
   ui.soundBtn.setAttribute('aria-label',soundEnabled?'Desativar som':'Ativar som');

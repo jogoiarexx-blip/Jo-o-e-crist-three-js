@@ -9,6 +9,8 @@ import {AIRPORT_START,AIRPORT_TARGETS} from './airport-state.js';
 import {buildAirport} from './airport-world.js';
 import {ROAD_START,ROAD_TARGETS} from './road-state.js';
 import {buildRoute66} from './road-world.js';
+import {DESERT_START,DESERT_TARGETS} from './desert-state.js';
+import {buildDesert} from './desert-world.js';
 import {FARM_HOUSE,FARM_GATE,FARM_OBJECTS,isInsideHouse,makeHouseColliders,makeFarmFenceColliders} from './farm-layout.js';
 
 const mat=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness:0.96,flatShading:true,...extra});
@@ -358,6 +360,7 @@ export function buildWorld(scene){
   const busInterior=buildBusInterior(scene,colliders,{box,ball,cyl,sign,mat});
   const airport=buildAirport(scene,colliders,{box,ball,cyl,sign,mat});
   const road=buildRoute66(scene,colliders,{box,ball,cyl,sign,mat});
+  const desert=buildDesert(scene,colliders,{box,ball,cyl,sign,mat});
   // Fase 1 ampliada: café da manhã jogável dentro da casa, sem mexer no restante do mundo.
   const coffeeTable=box(scene,1.35,.16,1.05,wood,-15.5,.87,-11.25);
   for(const x of [-16.0,-15.0])for(const z of [-11.65,-10.85])
@@ -426,6 +429,7 @@ export function buildWorld(scene){
   for(const [id,p] of Object.entries(BUS_TARGETS))addMarker(id,p.x,p.z,p.label,p.radius);
   for(const [id,p] of Object.entries(AIRPORT_TARGETS))addMarker(id,p.x,p.z,p.label,p.radius);
   for(const [id,p] of Object.entries(ROAD_TARGETS))addMarker(id,p.x,p.z,p.label,p.radius);
+  for(const [id,p] of Object.entries(DESERT_TARGETS))addMarker(id,p.x,p.z,p.label,p.radius);
   const clouds=[];
   for(let i=0;i<12;i++){
     const g=new THREE.Group();g.position.set(-50+i*18,20+i%4*3,-48-(i%3)*9);
@@ -435,7 +439,7 @@ export function buildWorld(scene){
     }scene.add(g);clouds.push(g);
   }
   let panteraExcitedUntil=0,gateOpened=false,lastDogTime=0;
-  return {markers,colliders,bus,bike,city,busInterior,airport,road,pantera,clouds,sun,radio,ticket,suitcase,packingProps,chickens,
+  return {markers,colliders,bus,bike,city,busInterior,airport,road,desert,pantera,clouds,sun,radio,ticket,suitcase,packingProps,chickens,
     openGate(){
       if(gateOpened)return;
       gateOpened=true;
@@ -446,7 +450,7 @@ export function buildWorld(scene){
       if(isOpen){this.openGate();gate.hinge.rotation.y=Math.PI*.5;}
     },
     isInsideHouse,
-    setChapter(step){busInterior.setActive(step>=12&&step<AIRPORT_START);airport.setActive(step>=AIRPORT_START&&step<ROAD_START);road.setActive(step>=ROAD_START);},
+    setChapter(step){busInterior.setActive(step>=12&&step<AIRPORT_START);airport.setActive(step>=AIRPORT_START&&step<ROAD_START);road.setActive(step>=ROAD_START&&step<DESERT_START);desert.setActive(step>=DESERT_START);desert.setStep(step);},
     setSoundFixed(fixed){busInterior.setSoundFixed(fixed);},
     setShowActive(on){busInterior.setDancing(on);},
 
@@ -493,7 +497,8 @@ export function buildWorld(scene){
       if(step>=7&&step<=11)city.update(time);
       if(step>=12&&step<AIRPORT_START)busInterior.update(time);
       if(step>=AIRPORT_START&&step<ROAD_START)airport.update(time);
-      if(step>=ROAD_START)road.update(time,step);
+      if(step>=ROAD_START&&step<DESERT_START)road.update(time,step);
+      if(step>=DESERT_START)desert.update(time);
       bus.rotation.z=Math.sin(time*2)*.0015;
       for(let i=0;i<clouds.length;i++)clouds[i].position.x+=.0002*(i%3+1);
       sun.position.set(target.x-23,40,target.z+18);sun.target.position.set(target.x,0,target.z);sun.target.updateMatrixWorld();

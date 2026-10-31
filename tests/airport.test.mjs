@@ -6,7 +6,7 @@ import {isBlocked} from '../src/collision.js';
 
 test('capítulos anteriores preservados, aeroporto adiciona 8 missões',()=>{
   assert.equal(AIRPORT_START,19);assert.equal(AIRPORT_END,26);
-  assert.equal(SAVE_VERSION,6);assert.equal(FINAL_STEP,35);
+  assert.equal(SAVE_VERSION,7);assert.equal(FINAL_STEP,46);
   assert.deepEqual(QUESTS.slice(0,12).map(x=>x.id),['wake','radio','ticket','crist','suitcase','pantera','gate','cityWelcome','crossing','cityBag','cityClerk','bus']);
   assert.deepEqual(QUESTS.slice(12,19).map(x=>x.id),['busSeat','busCrew','busCase','busInspect','busConnect','busDance','busReveal']);
   assert.deepEqual(AIRPORT_QUESTS.map(x=>x.id),['airWelcome','airCheckin','airPassport','airFarofa','airSecurity','airGate','airRush','airBoard']);

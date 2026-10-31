@@ -1,6 +1,7 @@
 # Capítulo 4 — Route 66
 
 **Implementação:** v0.5.0 · Three.js · nova fase acrescentada após o Aeroporto dos Perdidos.
+**Continuidade v0.6.0:** a pane passa a iniciar o Capítulo 5, descrito em `FASE-06-DESERTO.md`. Route 66 permanece intacta.
 **Base narrativa:** `JOAO_E_CRIST_PROPOSTA_3D.md`, capítulos 4 e 5.
 **Política de preservação:** todos os episódios, puzzles, diálogos, personagens e saves da Fazenda, Rodoviária, Excursão Errada e Aeroporto permanecem.
 

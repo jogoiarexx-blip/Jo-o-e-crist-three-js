@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.5.0 — Capítulo 4: Route 66 com direção jogável, paradas e pane no deserto).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Primeiro protótipo jogável (v0.6.0 — Capítulo 5: O Deserto Não Perdoa, água, sombra, posto e conserto).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -11,6 +11,22 @@ https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 **Celular:** analógico à esquerda, botões AÇÃO / TROCAR / ESQUIVAR, arrastar a tela gira a câmera.
 
 **Gamepad:** analógico esquerdo move, direito gira a câmera, A interage, B esquiva, Y troca personagem, Start pausa (diálogos e bicicleta estão acessíveis por teclado/touch; integração completa do gamepad seguirá).
+
+## Capítulo 5 — O Deserto Não Perdoa (v0.6.0)
+
+Depois da pane na Route 66, a aventura continua em uma área compacta do deserto de Nevada. A implementação **preserva todos os capítulos anteriores**.
+
+- Explorar o deserto: van avariada, abrigo de sombra, posto Água Clara, bombas identificadas, oficina, placas contraditórias e mirante de Vegas.
+- **11 novas missões**, incluindo procurar água, carregar um galão com João até a van, conseguir a peça com Zeca e consertar o veículo.
+- Crist lê a sinalização da bomba potável e interpreta as placas da estrada; João cuida da água e do reparo.
+- **Quatro desafios de observação**, com alternativas erradas recuperáveis e diálogos originais.
+- Três NPCs opcionais: Zeca (mecânico), Rosa (dona do posto) e Luna (viajante).
+- **Calor dinâmico sem game over**: aumenta no sol, diminui na sombra; indicador visual acessível no HUD.
+- Galão 3D aparece nos locais adequados e acompanha João durante o transporte.
+- A van reparada e as luzes no horizonte criam o gancho para **Bem-vindos a Vegas**.
+- Saves v1–v6 continuam reconhecidos; o encerramento antigo da Route 66 é a primeira etapa do Deserto.
+- [MD e checklist do Deserto](FASE-06-DESERTO.md).
+- Testes automatizados de progressão, segurança das interações e saves. **QA visual desktop e Android ainda pendente.**
 
 ## Capítulo 4 — Route 66 (v0.5.0)
 
@@ -164,4 +180,4 @@ A prioridade atual, por solicitação explícita, é **Capítulo 1 — A Rodovi�
 
 ## Próximas prioridades
 
-**Validar em jogo a Route 66** e as transições de capítulos, incluindo dirigibilidade, câmera da van, FPS, controles por toque e gamepad. Depois avançar para O Deserto Não Perdoa conforme o MD original, sem eliminar conteúdo existente.
+**Validar em jogo O Deserto Não Perdoa**, incluindo sombra, coleta e transporte de água, câmera, colisões da oficina e legibilidade das placas no Android. A próxima fase será Bem-vindos a Vegas, preservando o conteúdo anterior.

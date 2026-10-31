@@ -50,3 +50,12 @@
 #roadProgress{height:100%;width:100%;transform:scaleX(0);transform-origin:left;background:#eac678}
 .road-foot{color:#d2d6cc;font-size:10px;letter-spacing:.035em}
 @media(max-width:640px){.road-hud{bottom:158px;max-width:94vw;padding:10px 12px}.road-head{font-size:10px}.road-foot{font-size:8px;flex-wrap:wrap;gap:5px}}
+
+/* Capítulo 5 — calor sem game over, painel com contraste discreto. */
+.desert-hud{position:absolute;z-index:6;right:clamp(14px,3vw,35px);bottom:clamp(124px,16vh,168px);width:min(300px,40vw);padding:12px 14px;border:1px solid rgba(239,201,139,.57);background:rgba(28,32,33,.83);box-shadow:0 10px 28px #0006;pointer-events:none}
+.desert-hud[hidden]{display:none!important}
+.desert-head{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#ffe6b5;font-weight:800;letter-spacing:.035em;font-size:10px}
+.desert-track{height:6px;background:#48514e;margin:10px 0 8px;overflow:hidden;border-radius:8px}
+#desertHeatBar{height:100%;transform:scaleX(0);transform-origin:left;background:linear-gradient(90deg,#e9c574,#cf7659)}
+.desert-help{font-size:10px;line-height:1.35;color:#e1d7c3}
+@media(max-width:640px){.desert-hud{bottom:156px;right:9px;width:min(210px,53vw);padding:9px 10px}.desert-head{font-size:9px;flex-wrap:wrap;gap:3px}.desert-help{font-size:9px}}
