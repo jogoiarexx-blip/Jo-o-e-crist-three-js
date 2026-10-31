@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {ROAD_CENTER,ROAD_NPCS,ROAD_DRIVES,ROAD_TARGETS,ROAD_START} from './road-state.js';
+import {ROAD_CENTER,ROAD_NPCS,ROAD_DRIVES,ROAD_TARGETS,ROAD_START,makeRoadColliders} from './road-state.js';
 
 // Diorama da Route 66: veículo controlável em faixa virtual, obstáculos dinâmicos
 // e uma pequena área explorável com lanchonete, mirante e oficina.
@@ -100,12 +100,7 @@ export function buildRoute66(scene,colliders,{box,ball,cyl,sign,mat}){
     }
     hazards.set(stage,items);
   }
-  const routeColliders=[
-    {x1:-41.75,x2:-36.25,z1:36.9,z2:41.2,height:3.5,tag:'road-diner'},
-    {x1:-20.2,x2:-14.8,z1:16.45,z2:20.55,height:3.2,tag:'road-garage'},
-    {x1:-19.65,x2:-16.35,z1:20.35,z2:21.65,height:1.6,tag:'road-workbench'},
-    {x1:-23,x2:-20,z1:37.4,z2:38.7,height:1.3,tag:'road-bench'}
-  ];
+  const routeColliders=makeRoadColliders();
   const people=[];
   for(let i=0;i<ROAD_NPCS.length;i++){
     const data=ROAD_NPCS[i],g=new THREE.Group();

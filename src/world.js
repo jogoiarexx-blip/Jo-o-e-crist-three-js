@@ -11,6 +11,8 @@ import {ROAD_START,ROAD_TARGETS} from './road-state.js';
 import {buildRoute66} from './road-world.js';
 import {DESERT_START,DESERT_TARGETS} from './desert-state.js';
 import {buildDesert} from './desert-world.js';
+import {applyChapterLayers} from './chapter-layers.js';
+import {BUS_START} from './bus-state.js';
 import {FARM_HOUSE,FARM_GATE,FARM_OBJECTS,isInsideHouse,makeHouseColliders,makeFarmFenceColliders} from './farm-layout.js';
 
 const mat=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness:0.96,flatShading:true,...extra});
@@ -315,6 +317,8 @@ export function buildWorld(scene){
   const sun=new THREE.DirectionalLight('#fff2d7',2.65);sun.position.set(-23,40,18);
   sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-36;sun.shadow.camera.right=36;sun.shadow.camera.top=38;sun.shadow.camera.bottom=-38;sun.shadow.camera.near=1;sun.shadow.camera.far=110;
   sun.shadow.bias=-.00015;scene.add(sun);scene.add(sun.target);
+  // Keep base outdoor meshes separate from all new indoor/chapter hubs.
+  const baseVisualStart=scene.children.length;
   const ground=box(scene,215,.23,115,grass,38,-.14,4);ground.castShadow=false;
   box(scene,180,.12,13,roadMat,40,.015,11);
   for(let x=-45;x<129;x+=8)box(scene,3.1,.025,.15,yellow,x,.096,11);
@@ -357,10 +361,12 @@ export function buildWorld(scene){
   const bus=makeBus(scene);const pantera=dog(scene);const bike=makeBike(scene);
   // Capítulo 1: cidade e rodoviária enriquecidas, mantendo os prédios antigos.
   const city=buildCityDistrict(scene,colliders,{box,ball,cyl,sign,mat});
+  const originalOutdoorNodes=scene.children.slice(baseVisualStart);
   const busInterior=buildBusInterior(scene,colliders,{box,ball,cyl,sign,mat});
   const airport=buildAirport(scene,colliders,{box,ball,cyl,sign,mat});
   const road=buildRoute66(scene,colliders,{box,ball,cyl,sign,mat});
   const desert=buildDesert(scene,colliders,{box,ball,cyl,sign,mat});
+  const extraOutdoorStart=scene.children.length;
   // Fase 1 ampliada: café da manhã jogável dentro da casa, sem mexer no restante do mundo.
   const coffeeTable=box(scene,1.35,.16,1.05,wood,-15.5,.87,-11.25);
   for(const x of [-16.0,-15.0])for(const z of [-11.65,-10.85])
@@ -438,19 +444,35 @@ export function buildWorld(scene){
       p.castShadow=false;
     }scene.add(g);clouds.push(g);
   }
+  // Original Fazenda+Rodoviária and late farm props are now one visibility layer.
+  // Markers stay directly on the scene so objectives in all hubs remain visible.
+  // Collect by object identity, not position or arbitrary scene traversal.
+  const objectiveHolders=new Set(Object.values(markers).map(m=>m.holder));
+  const lateOutdoorNodes=scene.children.slice(extraOutdoorStart).filter(node=>!objectiveHolders.has(node));
+  const outdoorRoot=new THREE.Group();outdoorRoot.name='Capítulos 00–01 · Fazenda e Rodoviária';
+  outdoorRoot.add(...originalOutdoorNodes,...lateOutdoorNodes);scene.add(outdoorRoot);
+  // The bus/airport/road/desert register their colliders only when active.
+  // At this point the collider array therefore contains ONLY the original world.
+  const originalColliders=colliders.slice();
   let panteraExcitedUntil=0,gateOpened=false,lastDogTime=0;
-  return {markers,colliders,bus,bike,city,busInterior,airport,road,desert,pantera,clouds,sun,radio,ticket,suitcase,packingProps,chickens,
+  return {markers,colliders,originalColliders,outdoorRoot,bus,bike,city,busInterior,airport,road,desert,pantera,clouds,sun,radio,ticket,suitcase,packingProps,chickens,
     openGate(){
       if(gateOpened)return;
       gateOpened=true;
       const index=colliders.findIndex(c=>c.tag==='gate-leaf');
       if(index>=0)colliders.splice(index,1);
+      // Prevent the already opened gate being restored on chapter transitions.
+      const inBase=originalColliders.findIndex(c=>c.tag==='gate-leaf');
+      if(inBase>=0)originalColliders.splice(inBase,1);
     },
     setGateOpen(isOpen){
       if(isOpen){this.openGate();gate.hinge.rotation.y=Math.PI*.5;}
     },
     isInsideHouse,
-    setChapter(step){busInterior.setActive(step>=12&&step<AIRPORT_START);airport.setActive(step>=AIRPORT_START&&step<ROAD_START);road.setActive(step>=ROAD_START&&step<DESERT_START);desert.setActive(step>=DESERT_START);desert.setStep(step);},
+    setChapter(step){
+      applyChapterLayers(step,outdoorRoot,colliders,originalColliders,{busInterior,airport,road,desert});
+      desert.setStep(step);
+    },
     setSoundFixed(fixed){busInterior.setSoundFixed(fixed);},
     setShowActive(on){busInterior.setDancing(on);},
 
@@ -461,11 +483,14 @@ export function buildWorld(scene){
     },
     reactPantera(time){panteraExcitedUntil=time+8.5;},
     update(time,target,step=0,dt=.016){
-      farmhouse.setInteriorActive(isInsideHouse(target.x,target.z));
-      gate.hinge.rotation.y+=((gateOpened?Math.PI*.5:0)-gate.hinge.rotation.y)*.1;
+      if(step<BUS_START){
+        farmhouse.setInteriorActive(isInsideHouse(target.x,target.z));
+        gate.hinge.rotation.y+=((gateOpened?Math.PI*.5:0)-gate.hinge.rotation.y)*.1;
+      }
       for(const o of Object.values(markers))if(o.holder.visible){o.beacon.position.y=2.3+Math.sin(time*2.3)*.25;o.ring.rotation.z=time*.25;}
       // Reação da Pantera: aproxima-se com passos visíveis, acompanha brevemente
       // a despedida e volta para casa; nunca invade a rodoviária.
+      if(step<BUS_START){
       const goal=farewellGoal(target,time,panteraExcitedUntil);
       const dx=goal.x-pantera.position.x,dz=goal.z-pantera.position.z;
       const distance=Math.hypot(dx,dz);
@@ -494,13 +519,16 @@ export function buildWorld(scene){
       markers.pantera.holder.position.x=pantera.position.x;
       markers.pantera.holder.position.z=pantera.position.z;
       chickens.forEach((hen,i)=>{hen.position.y=Math.sin(time*3.3+i)*.022;hen.rotation.x=Math.sin(time*2.5+i)*.05;});
+      }
       if(step>=7&&step<=11)city.update(time);
       if(step>=12&&step<AIRPORT_START)busInterior.update(time);
       if(step>=AIRPORT_START&&step<ROAD_START)airport.update(time);
       if(step>=ROAD_START&&step<DESERT_START)road.update(time,step);
       if(step>=DESERT_START)desert.update(time);
-      bus.rotation.z=Math.sin(time*2)*.0015;
-      for(let i=0;i<clouds.length;i++)clouds[i].position.x+=.0002*(i%3+1);
+      if(step<BUS_START){
+        bus.rotation.z=Math.sin(time*2)*.0015;
+        for(let i=0;i<clouds.length;i++)clouds[i].position.x+=.0002*(i%3+1);
+      }
       sun.position.set(target.x-23,40,target.z+18);sun.target.position.set(target.x,0,target.z);sun.target.updateMatrixWorld();
     }
   };

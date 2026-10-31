@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Primeiro protótipo jogável (v0.6.0 — Capítulo 5: O Deserto Não Perdoa, água, sombra, posto e conserto).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.1 — QA-01: isolamento de cenários e colisões dos capítulos 00–05).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -11,6 +11,23 @@ https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 **Celular:** analógico à esquerda, botões AÇÃO / TROCAR / ESQUIVAR, arrastar a tela gira a câmera.
 
 **Gamepad:** analógico esquerdo move, direito gira a câmera, A interage, B esquiva, Y troca personagem, Start pausa (diálogos e bicicleta estão acessíveis por teclado/touch; integração completa do gamepad seguirá).
+
+## QA-01 — Colisões e isolamento entre capítulos (v0.6.1)
+
+Primeira rodada de correções estruturais após a auditoria dos capítulos 00–05, **sem adicionar uma fase ou remover o conteúdo existente**.
+
+- Os objetos visuais da Fazenda/Rodoviária são mantidos em um único grupo `outdoorRoot`, visível nos capítulos 00–01, e oculto em Excursão/Aeroporto/Route 66/Deserto.
+- As colisões originais agora saem do mundo ativo junto com esse grupo, voltando somente quando os capítulos 00–01 forem ativados. Corrigido o conflito da cerca da Fazenda que atravessava a Route 66 na linha z=24.
+- Interior do ônibus, aeroporto, Route 66 e deserto mantêm colisões próprias e exclusivas; trocar de missão não duplica colliders.
+- Porteira aberta permanece aberta mesmo quando o capítulo original é reativado.
+- A Route 66 usa a mesma lista de colisores em renderização e testes, reduzindo divergência.
+- Animações de Pantera, galinhas, nuvens e outros objetos da Fazenda são suspensas quando o capítulo original não está ativo.
+- **Novos testes de caminho em grade:** todos os marcadores da Excursão, Aeroporto, Route 66 e Deserto devem ser alcançáveis partindo do início do respectivo capítulo.
+- A versão de save **permanece 7**, compatível com os saves anteriores. Não há nova missão.
+- O isolamento de visibilidade reduz desenhos desnecessários, porém os ambientes ainda são alocados no carregamento inicial. A auditoria de FPS real e carregamento progressivo fica para QA-05.
+- [Relatório completo de implementação e critérios](QA-01-ISOLAMENTO-CAPITULOS.md). [Auditoria original](AUDITORIA-CAPITULOS-00-05.md).
+
+**Limitação:** testes geométricos e automáticos não equivalem a uma partida visual completa no navegador ou a uma homologação no Android.
 
 ## Capítulo 5 — O Deserto Não Perdoa (v0.6.0)
 
