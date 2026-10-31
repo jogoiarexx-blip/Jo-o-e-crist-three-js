@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.2 — QA-02: interações físicas alinhadas nos capítulos 02 e 03).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.3 — QA-03: continuidade narrativa e transições entre capítulos).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -11,6 +11,23 @@ https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 **Celular:** analógico à esquerda, botões AÇÃO / TROCAR / ESQUIVAR, arrastar a tela gira a câmera.
 
 **Gamepad:** analógico esquerdo move, direito gira a câmera, A interage, B esquiva, Y troca personagem, Start pausa (diálogos e bicicleta estão acessíveis por teclado/touch; integração completa do gamepad seguirá).
+
+## QA-03 — Continuidade narrativa e transições (v0.6.3)
+
+Revisão focada nos seis capítulos já existentes, mantendo a campanha com 47 estados e o formato dos saves na versão interna 7.
+
+- **Guichê correto não vira erro de Crist:** ele identifica o portão 2 para o aeroporto, enquanto o portão 3 leva à Excursão Estelar.
+- **O embarque errado agora tem causa e efeito:** anúncios simultâneos abafam as chamadas; uma rajada de vento leva o chapéu de João à fila do portão 3; João entra para recuperá-lo, Crist o segue para trazê-lo de volta e as portas se fecham.
+- Placas distintas e legíveis foram reforçadas nos portões 2 e 3, e o ônibus roxo passa a anunciar SHOW ESTELAR, sem prometer Vegas.
+- **Efeito de chapéu voando:** no estado 11, a peça sai visualmente da cabeça de João e aparece animada perto do ônibus; retorna ao personagem quando inicia a excursão. João ganha gesto de tentar alcançar o chapéu.
+- **Cinco transições centralizadas** em `src/chapter-transitions.js`: Fazenda → Rodoviária, Rodoviária → Excursão, Excursão → Aeroporto, Aeroporto → Route 66, Route 66 → Deserto.
+- Cada passagem posiciona os dois personagens, ajusta a câmera, preserva a escolha de João/Crist e apresenta um curto diálogo de ligação da história.
+- A abertura de um save no início do novo capítulo usa a mesma definição de entrada, sem duplicar coordenadas em blocos separados de código.
+- A descoberta do festival dentro da Excursão deixa de contradizer a entrada: os dois já sabem que embarcaram no veículo errado, mas só depois descobrem o destino e recebem ajuda da trupe.
+- Testes `tests/chapter-transitions.test.mjs` cobrem roteiro, spawns sem colisão, casal, câmera, integração das entradas e migração dos saves.
+- [Relatório e critérios QA-03](QA-03-CONTINUIDADE-TRANSICOES.md). Próxima prioridade: QA-04, direção da Route 66 e fotografia real.
+
+**Limite:** cenas narrativas usam diálogos e animação low poly simples; ainda não são cutscenes cinematográficas nem substituem testes de gameplay de PC/Android.
 
 ## QA-02 — Objetos realmente interativos (v0.6.2)
 

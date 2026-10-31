@@ -15,7 +15,7 @@ export const QUESTS=[
   {id:'crossing',title:'Atravesse a faixa com cuidado',hint:'Vá à faixa de pedestres perto da rodoviária. Cuidado com o ciclista apressado!'},
   {id:'cityBag',title:'Recupere a mala certa',hint:'A bagagem foi parar no carrinho do carregador. Troque para Crist e compare a etiqueta do comprovante.'},
   {id:'cityClerk',title:'Confira o portão das passagens',hint:'Com Crist, examine as passagens no guichê e encontre o portão correto para o aeroporto.'},
-  {id:'bus',title:'Encontre João e embarque na excursão',hint:'O ônibus roxo está no terminal. João quer entrar antes de ouvir o aviso completo.'},
+  {id:'bus',title:'Recupere João na fila errada',hint:'O traslado ao aeroporto é no portão 2. João seguiu o chapéu até a fila do portão 3, onde está o ônibus roxo.'},
   ...BUS_QUESTS,
   ...AIRPORT_QUESTS,
   ...ROAD_QUESTS,
@@ -100,9 +100,11 @@ export const SCENES={
     ['JOÃO','Teatro? Eu até que danço bem, desde que não precise subir num palco!']
   ],
   routeSolved:[
-    ['FUNCIONÁRIA','Muito bem! O transporte ao aeroporto sai do portão 2. Esperem pelo anúncio.'],
-    ['CRIST','Ouviu, João? PORTÃO DOIS. Não é qualquer ônibus com luzes piscando!'],
-    ['JOÃO','Uai, mas aquela excursão roxa está tão bonita...']
+    ['FUNCIONÁRIA','Passagem conferida! O traslado ao aeroporto sai do PORTÃO 2. Aguardem a chamada.'],
+    ['CRIST','Anotou, João? Portão dois, traslado ao aeroporto. Nada de ônibus com purpurina.'],
+    ['JOÃO','Anotei, uai! Só vou dar uma olhadinha naquelas luzes roxas.'],
+    ['NARRADOR','Uma rajada de vento levanta o chapéu de João. Ao mesmo tempo, o alto-falante anuncia dois embarques e mistura as chamadas.'],
+    ['CRIST','João! Volta aqui! Nosso portão é o DOIS!']
   ],
   bikeOK:[
     ['CICLISTA','Foi mal, senhor! Não vi vocês atravessando!'],
@@ -115,12 +117,16 @@ export const SCENES={
     ['JOÃO','Ainda bem que meu chapéu continua inteiro.']
   ],
   bus:[
-    ['JOÃO','Olha lá, Crist! Tá escrito EXCURSÃO ESTELAR. Dizem que tem espetáculo e tudo!'],
-    ['CRIST','João... esse ônibus está cheio de roupa brilhante.'],
-    ['ARTISTA','Entrem, meus amores! Vamos fazer um espetáculo inesquecível!'],
-    ['JOÃO','Viu? Até recepção chique nós temos!'],
-    ['CRIST','Eu tenho um péssimo pressentimento...'],
-    ['NARRADOR','E assim João e Crist embarcam no ônibus errado. O destino? Uma grande aventura.']
+    ['NARRADOR','O chapéu aterrissa perto do PORTÃO 3, no meio da fila da Excursão Estelar. João corre atrás dele.'],
+    ['JOÃO','Volta cá, chapéu! Sem você eu nem pareço eu!'],
+    ['BETO','Pessoal do espetáculo, podem entrar! O ônibus roxo já vai sair!'],
+    ['JOÃO','Só um instantinho, moço! Meu chapéu foi parar aí dentro!'],
+    ['ARTISTA','Eu peguei! Vem buscar, meu querido!'],
+    ['CRIST','João, sai dessa fila! O nosso traslado sai do PORTÃO 2!'],
+    ['JOÃO','Eu já vou! Só pego o chapéu e volto!'],
+    ['NARRADOR','Crist sobe atrás de João para trazê-lo de volta, mas as portas se fecham no meio da confusão.'],
+    ['CRIST','A gente entrou no ônibus errado tentando SAIR dele. Isso só acontece com você!'],
+    ['JOÃO','Pelo menos salvei o chapéu. Agora... onde será que esse ônibus vai parar?']
   ]
 };
 // Os objetos da Fazenda são colecionáveis narrativos, não itens compráveis.

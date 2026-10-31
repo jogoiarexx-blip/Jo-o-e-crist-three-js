@@ -30,9 +30,12 @@ export function createElder(id){
     const moustache=material('#eee0c1');
     sphere(head,.128,moustache,-.12,-.17,.35).scale.set(1,.5,.6);
     sphere(head,.128,moustache,.12,-.17,.35).scale.set(1,.5,.6);
-    tube(head,.58,.53,.15,material(colors.hat),0,.35,0);
-    tube(head,.4,.39,.34,material('#d8bd83'),0,.56,0);
-    tube(head,.42,.42,.07,material('#584635'),0,.45,0);
+    // Separate hat from the head so the story can show it blown away.
+    const hat=new THREE.Group();hat.name='joao-hat';head.add(hat);
+    tube(hat,.58,.53,.15,material(colors.hat),0,.35,0);
+    tube(hat,.4,.39,.34,material('#d8bd83'),0,.56,0);
+    tube(hat,.42,.42,.07,material('#584635'),0,.45,0);
+    g.userData.hat=hat;
     for(const x of [-.29,.29])sphere(head,.15,material('#e6e0d0'),x,-.05,-.07).scale.set(.9,1.3,.55);
   } else {
     // Crist: óculos de aro quadrado, pouco cabelo grisalho e boina curta.
@@ -56,7 +59,7 @@ export function createElder(id){
   }
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(.6,18),new THREE.MeshBasicMaterial({color:'#172a26',transparent:true,opacity:.2,depthWrite:false}));
   shadow.rotation.x=-Math.PI/2;shadow.position.y=.018;root.add(shadow);
-  root.userData={id,arms,legs,head,body,shadow,eyes,mouth,moving:0,phase:0,gesture:'',gestureTime:0};
+  root.userData={id,arms,legs,head,body,shadow,eyes,mouth,hat:joao?g.userData.hat:null,moving:0,phase:0,gesture:'',gestureTime:0};
   return root;
 }
 export function gestureElder(root,gesture='talk',duration=1.6){
@@ -81,11 +84,14 @@ export function animateElder(root,dt,speed,time){
     left=-1.05;right=-.52;
   }else if(d.gesture==='pet'){
     left=.52;right=.24;
+  }else if(d.gesture==='reach'){
+    left=-1.75+Math.sin(time*8.0)*.15;
+    right=-1.35+Math.sin(time*6.7)*.18;
   }
   const gain=1-Math.exp(-dt*11);
   d.arms[0].rotation.x+=(left-d.arms[0].rotation.x)*gain;
   d.arms[1].rotation.x+=(right-d.arms[1].rotation.x)*gain;
-  d.body.rotation.z=Math.sin(d.phase*.52)*.025;
+  d.body.rotation.z=Math.sin(d.phase*.52)*.025+(d.gesture==='reach'?.13:0);
   d.head.rotation.y=Math.sin(time*.7+(d.id==='joao'?0:1))*.055+(d.gesture==='shrug'?.09:0);
   d.body.position.y=1.27+(speed>.2?Math.abs(Math.sin(d.phase))*.055:Math.sin(time*2.1)*.017);
   // Piscar rápido sem criar geometrias novas a cada frame.

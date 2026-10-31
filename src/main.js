@@ -13,6 +13,7 @@ import {AIRPORT_START,AIRPORT_SPAWN,AIRPORT_CHOICES,AIRPORT_SCENES,checkAirportA
 import {ROAD_START,ROAD_CENTER,ROAD_SPAWN,ROAD_CHOICES,ROAD_SCENES,ROAD_DRIVES,checkRoadAnswer,findRoadNpc,initialRoadRun,normalizeRoadRun,advanceRoadRun,roadGrade} from './road-state.js';
 import {DESERT_START,DESERT_SPAWN,DESERT_CHOICES,DESERT_SCENES,checkDesertAnswer,findDesertNpc,isDesertShade,advanceDesertHeat,desertHeatLabel,desertCarryActive} from './desert-state.js';
 import {canUseObjective} from './interaction-anchors.js';
+import {findChapterTransition,chapterTransitionAt,chapterEntryPosition} from './chapter-transitions.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
@@ -117,6 +118,8 @@ function updateMission(){
   if(step===17)ui.hint.textContent='Faça PALMAS, PASSO, GIRO, PALMAS. Ritmo: '+rhythmProgress+'/4. Vá ao centro do corredor.';
   ui.mission.hidden=step>=FINAL_STEP;
   world.setChapter?.(step);
+  // João recupera o chapéu somente ao entrar no ônibus (step 12).
+  if(actors?.joao?.userData?.hat)actors.joao.userData.hat.visible=step!==11;
   world.setTarget(target);
   world.setPacked?.(packing);
   world.setSoundFixed?.(step>=17);
@@ -130,40 +133,34 @@ function updateMission(){
   if(step>=FINAL_STEP)ui.prompt.hidden=true;
 }
 function advanceTo(next){
-  const previous=step;step=clamp(next,0,FINAL_STEP);
-  if(step===BUS_START&&previous===11){
-    actors[heroId].position.set(BUS_SPAWN.x,0,BUS_SPAWN.z);
-    const other=heroId==='joao'?'crist':'joao';
-    actors[other].position.set(BUS_SPAWN.x+.85,0,BUS_SPAWN.z-1.2);
-    yaw=1.4;zoom=6.4;walking={x:0,z:0};
-    notify('Vocês embarcaram! Conheça a trupe da Excursão Estelar.');
-  }
+  const previous=step;
+  const destination=clamp(next,0,FINAL_STEP);
+  const transition=findChapterTransition(previous,destination);
+  step=destination;
   if(step===17&&previous!==17){rhythmProgress=0;saveRhythm();}
-  writeSave();updateMission();
-  if(step===DESERT_START&&previous===34){
-    actors[heroId].position.set(DESERT_SPAWN.x,0,DESERT_SPAWN.z);
-    const other=heroId==='joao'?'crist':'joao';
-    actors[other].position.set(DESERT_SPAWN.x+.9,0,DESERT_SPAWN.z+1.0);
-    yaw=1.18;zoom=7.3;walking={x:0,z:0};desertHeat=0;
-    notify('A van parou! Inspecione o motor e procure sombra no posto.');
+  if(transition){
+    const positions=chapterEntryPosition(transition,heroId);
+    for(const id of ['joao','crist'])
+      actors[id].position.set(positions[id].x,0,positions[id].z);
+    yaw=transition.camera.yaw;
+    zoom=transition.camera.zoom;
+    walking={x:0,z:0};
+    playerVelocity=0;
+    // New chapter begins only after both elders are safely in the new hub.
+    if(step===DESERT_START)desertHeat=0;
   }
-  if(step===ROAD_START&&previous===26){
-    actors[heroId].position.set(ROAD_SPAWN.x,0,ROAD_SPAWN.z);
-    const other=heroId==='joao'?'crist':'joao';
-    actors[other].position.set(ROAD_SPAWN.x+.95,0,ROAD_SPAWN.z-1.2);
-    yaw=1.25;zoom=8.0;walking={x:0,z:0};
-    notify('Bem-vindos à Route 66! Procurem o mapa da estrada.');
+  writeSave();
+  updateMission();
+  if(transition){
+    snapCamera();
+    notify(transition.message);
+    showDialogue(transition.lines);
   }
-  if(step===AIRPORT_START&&previous===18){
-    actors[heroId].position.set(AIRPORT_SPAWN.x,0,AIRPORT_SPAWN.z);
-    const other=heroId==='joao'?'crist':'joao';
-    actors[other].position.set(AIRPORT_SPAWN.x+.8,0,AIRPORT_SPAWN.z-1.2);
-    yaw=1.45;zoom=7.2;walking={x:0,z:0};
-    notify('A trupe deixou vocês no aeroporto! Encontrem o voo correto.');
-  }
-  if((step===BUS_START&&previous===11)||(step===AIRPORT_START&&previous===18)||(step===ROAD_START&&previous===26)||(step===DESERT_START&&previous===34))snapCamera();
   if(step===29||step===33)beginRoadDrive();
-  if(step===FINAL_STEP){ui.end.hidden=false;ui.hud.hidden=true;ui.mobile.hidden=true;ui.mission.hidden=true;started=false;}
+  if(step===FINAL_STEP){
+    ui.end.hidden=false;ui.hud.hidden=true;ui.mobile.hidden=true;
+    ui.mission.hidden=true;started=false;
+  }
 }
 function showDialogue(lines,onFinish){
   if(!lines||!lines.length){onFinish?.();return;}
@@ -178,6 +175,7 @@ function displayDialogueLine(){
   if(who&&actors?.[who]){
     const mood=/ganh|Vegas|consegu|rica|pr[oô]mio|viajante/i.test(line[1])?'celebrate':
       /Pantera|menina|lembran[cç]a/i.test(line[1])?'pet':
+      /chapéu|volta cá|corre atrás/i.test(line[1])?'reach':
       /ué|uai|calma|como assim|pera[ií]/i.test(line[1])?'shrug':'talk';
     gestureElder(actors[who],mood,2.5);
   }
@@ -302,15 +300,8 @@ function useTarget(){
   if(activeStep===5){world.reactPantera?.(clockTime,actors[heroId].position);audio?.bark?.();}
   if(activeStep===6){world.openGate?.();tone(195,.27,'sawtooth',.023);}
   showDialogue(lines,()=>{
-    if(activeStep===6){
-      // Preserva a cidade e a viagem da versão anterior, depois de concluir a Fazenda.
-      actors[heroId].position.set(49,0,21);
-      const other=heroId==='joao'?'crist':'joao';
-      actors[other].position.set(47.5,0,20);
-      snapCamera();notify('Fase 1 concluída! Agora vocês seguem à rodoviária.');
-    } else if(activeStep===11){
-      world.bike.visible=false;
-    }
+    if(activeStep===11)world.bike.visible=false;
+    // QA-03: entrada, dupla e câmera são aplicadas somente em advanceTo.
     advanceTo(activeStep+1);
   });
 }
@@ -739,7 +730,8 @@ function start(){
   const data=readSave();step=data.step;packing=normalizePacking(data.packing);
   memories=readMemories();rhythmProgress=step===17?readRhythm():0;
   if(step===FINAL_STEP){step=0;packing=[];writeSave();}
-  const spawn=step===0?{x:-15.5,z:-14.65}:
+  const chapterEntry=chapterTransitionAt(step);
+  const spawn=chapterEntry?.spawn||(step===0?{x:-15.5,z:-14.65}:
     step===1?{x:-12,z:-10.5}:
     step===2?{x:-7.5,z:2.5}:
     step===4?{x:-12.2,z:-6.2}:
@@ -751,11 +743,17 @@ function start(){
     step===11?{x:91,z:2.5}:
     step>=DESERT_START?(step===35?{x:DESERT_SPAWN.x,z:DESERT_SPAWN.z}:step===36?{x:-68,z:-17.8}:step===37?{x:-72,z:-19.2}:step===38?{x:-76.3,z:-5.5}:step===39?{x:-68.3,z:-4.0}:step===40?{x:-68,z:-4.0}:step===41?{x:-52,z:-15}:step>=44?{x:-54,z:-4}:{x:-60.1,z:-13}):
     step>=ROAD_START?(step===30?{x:-35,z:30}:step===31?{x:-22,z:34}:step===32?{x:-20,z:25}:step===34?{x:-20,z:25}:{x:ROAD_SPAWN.x,z:ROAD_SPAWN.z}):
-    step>=AIRPORT_START?{x:AIRPORT_SPAWN.x,z:AIRPORT_SPAWN.z}:{x:BUS_SPAWN.x,z:BUS_SPAWN.z};
+    step>=AIRPORT_START?{x:AIRPORT_SPAWN.x,z:AIRPORT_SPAWN.z}:{x:BUS_SPAWN.x,z:BUS_SPAWN.z});
   actors.joao.position.set(spawn.x,0,spawn.z);
   actors.crist.position.set(spawn.x+(step>=BUS_START?.85:1.3),0,spawn.z+(step>=BUS_START?-1.2:.5));
+  if(chapterEntry){
+    const positions=chapterEntryPosition(chapterEntry,data.hero);
+    for(const id of ['joao','crist'])
+      actors[id].position.set(positions[id].x,0,positions[id].z);
+  }
   setHero(data.hero,true);started=true;paused=false;
-  if(step>=DESERT_START){yaw=1.18;zoom=7.3;}
+  if(chapterEntry){yaw=chapterEntry.camera.yaw;zoom=chapterEntry.camera.zoom;}
+  else if(step>=DESERT_START){yaw=1.18;zoom=7.3;}
   else if(step>=ROAD_START){yaw=1.25;zoom=8.0;}
   else if(step>=AIRPORT_START){yaw=1.45;zoom=7.2;}
   else if(step>=BUS_START){yaw=1.4;zoom=6.4;}

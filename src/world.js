@@ -210,7 +210,7 @@ function makeBus(scene){
   }
   box(bus,1.7,2.6,.12,mat('#dfc99e'),-4.65,1.82,2.21);
   sign(bus,'EXCURSÃO ESTELAR',1.5,3.75,2.15,5.9,.59,'#502b58');
-  sign(bus,'VEGAS?',-3.8,4.55,0,4.5,.68,'#473343');
+  sign(bus,'SHOW ESTELAR',-3.8,4.55,0,4.5,.68,'#473343');
   box(bus,.17,.18,4.2,mat('#eee4b6'),6.15,1.8,0);
   return bus;
 }
@@ -361,6 +361,12 @@ export function buildWorld(scene){
   const bus=makeBus(scene);const pantera=dog(scene);const bike=makeBike(scene);
   // Capítulo 1: cidade e rodoviária enriquecidas, mantendo os prédios antigos.
   const city=buildCityDistrict(scene,colliders,{box,ball,cyl,sign,mat});
+  // Pequeno efeito visual do chapéu: fica no portão 3 enquanto João tenta recuperá-lo.
+  const windHat=new THREE.Group();windHat.name='Chapéu voando · Portão 3';scene.add(windHat);
+  cyl(windHat,.58,.54,.13,mat('#c8a268'),0,.13,0,12);
+  cyl(windHat,.40,.38,.34,mat('#d8bd83'),0,.37,0,12);
+  cyl(windHat,.42,.42,.075,mat('#584635'),0,.30,0,12);
+  windHat.visible=false;
   const originalOutdoorNodes=scene.children.slice(baseVisualStart);
   const busInterior=buildBusInterior(scene,colliders,{box,ball,cyl,sign,mat});
   const airport=buildAirport(scene,colliders,{box,ball,cyl,sign,mat});
@@ -471,6 +477,7 @@ export function buildWorld(scene){
     isInsideHouse,
     setChapter(step){
       applyChapterLayers(step,outdoorRoot,colliders,originalColliders,{busInterior,airport,road,desert});
+      windHat.visible=step===11;
       desert.setStep(step);
     },
     setSoundFixed(fixed){busInterior.setSoundFixed(fixed);},
@@ -525,6 +532,11 @@ export function buildWorld(scene){
       if(step>=AIRPORT_START&&step<ROAD_START)airport.update(time);
       if(step>=ROAD_START&&step<DESERT_START)road.update(time,step);
       if(step>=DESERT_START)desert.update(time);
+      if(step===11){
+        windHat.position.set(94.0+Math.sin(time*2.3)*.68,1.35+Math.abs(Math.sin(time*3.0))*.48,2.7+Math.cos(time*1.4)*.43);
+        windHat.rotation.y=time*2.2;
+        windHat.rotation.z=Math.sin(time*2.6)*.22;
+      }
       if(step<BUS_START){
         bus.rotation.z=Math.sin(time*2)*.0015;
         for(let i=0;i<clouds.length;i++)clouds[i].position.x+=.0002*(i%3+1);

@@ -31,7 +31,10 @@ export function buildCityDistrict(scene,colliders,{box,ball,cyl,sign,mat}){
   for(const [x,text] of [[74.5,'GUICHÊ'],[86.5,'BAGAGENS'],[94.2,'PORTÃO 3']]){
     sign(scene,text,x,3.48,-1.45,4.0,.52,'#415e5e');
   }
-  sign(scene,'PORTÃO 2  ·  AEROPORTO',75.4,2.79,-3.06,6.2,.49,'#344f46');
+  sign(scene,'PORTÃO 2 · AEROPORTO',75.4,2.79,-3.06,6.2,.49,'#344f46');
+  // Dois portões distintos: o jogador acertou o 2; João corre ao 3 atrás do chapéu.
+  sign(scene,'PORTÃO 3 · EXCURSÃO ESTELAR',95,2.94,-3.07,8.2,.48,'#594668');
+  sign(scene,'AGUARDE A CHAMADA · PORTÃO 2',76.4,2.10,-3.05,6.6,.37,'#466456');
   // Balcão de informações diante da fachada, com um expositor e corredor livre.
   box(scene,3.3,1.0,1.1,mat('#715942'),74.5,.58,-2.35);
   box(scene,3.52,.11,1.3,mat('#bba17d'),74.5,1.13,-2.35);

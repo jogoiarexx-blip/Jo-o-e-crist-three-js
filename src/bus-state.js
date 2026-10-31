@@ -120,10 +120,10 @@ export const BUS_SCENES=Object.freeze({
   reveal:[
     ['CRIST','Agora me diga uma coisa, motorista: qual é o destino dessa excursão?'],
     ['BETO','O festival Estelar, na cidade vizinha! Vamos apresentar nosso espetáculo.'],
-    ['JOÃO','Cidade vizinha? Mas eu achei que essa era a excursão para Las Vegas!'],
-    ['LUZIA','Las Vegas? Vocês entraram no ônibus errado!'],
-    ['JOÃO','Eu li só a palavra Estelar e já pensei nas luzes de Vegas...'],
-    ['CRIST','Eu sabia que estava faltando ler o resto da placa.'],
+    ['JOÃO','Cidade vizinha? Eu tinha esperança de que esse ônibus ainda passasse pelo aeroporto!'],
+    ['LUZIA','Aeroporto? Não, meus queridos. É o festival Estelar!'],
+    ['JOÃO','Eu vi tanta luz e tanto figurino que achei que a viagem já estava parecendo Vegas...'],
+    ['CRIST','Foi o chapéu que nos meteu na fila do três. Nosso portão era o DOIS!'],
     ['BETO','Não se preocupem. A gente ajuda vocês a achar o transporte certo.'],
     ['NARRADOR','A confusão vira amizade. A viagem continua com mais uma história para contar.']
   ]
