@@ -64,6 +64,7 @@ test('rotação do analógico direito é independente da frequência de quadros'
   const yaw30=Array.from({length:30}).reduce(y=>joystickYaw(y,.7,1/30),.5);
   const yaw120=Array.from({length:120}).reduce(y=>joystickYaw(y,.7,1/120),.5);
   assert.ok(Math.abs(yaw30-yaw120)<1e-9);
+  assert.ok(yaw30<.5,'analógico direito gira câmera à direita da tela');
   assert.equal(joystickYaw(.5,.05,1/30),.5,'zona morta');
 });
 test('Pantera acompanha um pouco e depois volta, sem entrar na cidade',()=>{

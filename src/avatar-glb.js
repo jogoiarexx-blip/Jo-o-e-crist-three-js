@@ -3,8 +3,8 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 
 // Estes arquivos são fornecidos pelo criador do jogo. O fallback procedural
 // só aparece se o GLB estiver ausente, corrompido ou inacessível.
-import {CHARACTER_ASSETS,CHARACTER_PACKED_PARTS,CHARACTER_CLIPS,normalizeCharacterHeight,getCharacterAnimationName} from './avatar-logic.js';
-export {CHARACTER_ASSETS,CHARACTER_CLIPS,normalizeCharacterHeight,getCharacterAnimationName} from './avatar-logic.js';
+import {CHARACTER_ASSETS,CHARACTER_PACKED_PARTS,CHARACTER_CLIPS,CHARACTER_HEIGHTS,normalizeCharacterHeight,groundedFootCorrection,getCharacterAnimationName} from './avatar-logic.js';
+export {CHARACTER_ASSETS,CHARACTER_CLIPS,CHARACTER_HEIGHTS,normalizeCharacterHeight,getCharacterAnimationName} from './avatar-logic.js';
 
 function makeIdleClip(walk){
   // Ambos os Meshy GLBs têm Walking, mas nenhum possui Idle.
@@ -50,6 +50,20 @@ export function updateCharacterAnimation(root,dt){
     else if(animation.current==='Running')playing.setEffectiveTimeScale(Math.max(.8,Math.min(1.15,(data.moving||0)/5.25)));
   }
   animation.mixer.update(Math.min(Math.max(dt,0),.05));
+  // Um tornozelo fica em apoio ao caminhar: compensar a altura do rig
+  // no grupo visual sem mover o colisor, a câmera ou o save do personagem.
+  const ground=data.avatarGround;
+  if(ground?.feet.length &&
+     [CHARACTER_CLIPS.idle,CHARACTER_CLIPS.walk,CHARACTER_CLIPS.run].includes(animation.current)){
+    root.updateMatrixWorld(true);
+    let lowest=Infinity;
+    for(const bone of ground.feet){
+      bone.getWorldPosition(ground.temp);
+      lowest=Math.min(lowest,ground.temp.y);
+    }
+    if(Number.isFinite(lowest))
+      ground.mount.position.y+=groundedFootCorrection(lowest,ground.referenceY,dt);
+  }
   return true;
 }
 export async function loadCharacterGlb(root,id,loader=new GLTFLoader()){
@@ -85,9 +99,13 @@ export async function loadCharacterGlb(root,id,loader=new GLTFLoader()){
   const box=new THREE.Box3().setFromObject(model);
   const height=box.max.y-box.min.y;
   if(!Number.isFinite(height)||height<.3)throw new Error(id+': altura inválida no GLB');
-  const factor=normalizeCharacterHeight(height);
-  model.scale.multiplyScalar(factor);
-  model.position.y-=box.min.y*factor;
+  const targetHeight=CHARACTER_HEIGHTS[id];
+  const factor=normalizeCharacterHeight(height,targetHeight);
+  // Transformações de escala/solo fora do GLB preservam rig e root motion.
+  const mount=new THREE.Group();
+  mount.name=id+'-AvatarGroundAnchor';
+  mount.scale.setScalar(factor);
+  mount.add(model);
   model.name=id+'-Meshy-GLB';
   model.traverse(obj=>{
     if(obj.isMesh||obj.isSkinnedMesh){
@@ -95,17 +113,34 @@ export async function loadCharacterGlb(root,id,loader=new GLTFLoader()){
       obj.frustumCulled=false; // SkinnedMesh moves bones outside rest-pose bounds.
     }
   });
-  root.add(model);
-  // Mantém um fallback enquanto a Promise não terminou, e o esconde depois
-  // sem deslocar o root usado pelos controles, diálogos ou pela câmera.
-  const old=root.userData.proceduralModel;
-  if(old)old.visible=false;
+  root.add(mount);
   root.userData.avatarModel=model;
+  root.userData.avatarMount=mount;
   root.userData.avatarSource=parts||url;
   root.userData.avatarClips=gltf.animations.map(c=>c.name);
   root.userData.avatarAnimation=makeCharacterAnimationState(model,gltf.animations);
   updateCharacterAnimation(root,0);
-  return {id,url:parts||url,height,scale:factor,clips:root.userData.avatarClips};
+  // Alinha a pose idle efetiva, em vez da bind-pose antes da animação.
+  const posedBounds=new THREE.Box3().setFromObject(mount);
+  if(Number.isFinite(posedBounds.min.y))mount.position.y-=posedBounds.min.y;
+  const feet=[];
+  model.traverse(node=>{
+    if(node.isBone&&/(foot|ankle)/i.test(node.name)&&!/(ik|target|pole|ctrl)/i.test(node.name))
+      feet.push(node);
+  });
+  mount.updateMatrixWorld(true);
+  const temp=new THREE.Vector3();
+  const referenceY=feet.reduce((low,bone)=>{
+    bone.getWorldPosition(temp);
+    return Math.min(low,temp.y);
+  },Infinity);
+  root.userData.avatarGround={
+    mount,feet,temp,referenceY:Number.isFinite(referenceY)?referenceY:0
+  };
+  // Não trocar o root do ator: a aventura, missões e saves permanecem iguais.
+  const old=root.userData.proceduralModel;
+  if(old)old.visible=false;
+  return {id,url:parts||url,height,targetHeight,scale:factor,footBones:feet.length,clips:root.userData.avatarClips};
 }
 export async function loadAllCharacterGlbs(actors,{onLoaded,onError}={}){
   const loader=new GLTFLoader();

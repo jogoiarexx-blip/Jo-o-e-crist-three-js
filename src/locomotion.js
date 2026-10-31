@@ -25,5 +25,5 @@ export function moveWithCollision(position,velocity,dt,colliders=[],radius=.38){
 export function joystickYaw(yaw,axis,dt,turnSpeed=1.72){
   const v=Math.abs(axis)>.18?axis:0;
   const t=Math.max(0,Math.min(.05,Number.isFinite(dt)?dt:0));
-  return yaw+v*turnSpeed*t;
+  return yaw-v*turnSpeed*t;
 }
