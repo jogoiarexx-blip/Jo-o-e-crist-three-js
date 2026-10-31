@@ -59,7 +59,7 @@ test('código do jogo usa os GLBs no mesmo ator sem perder controles e save',()=
  assert.match(avatars,/loader\.parseAsync\(merged\.buffer,basePath\)/);
  assert.match(avatars,/new DataView\(merged\.buffer\)\.getUint32\(8,true\)/);
  assert.match(avatars,/root\.add\(mount\)/);
- assert.match(avatars,/new THREE\.Box3\(\)\.setFromObject\(mount\)/);
+ assert.match(avatars,/new THREE\.Box3\(\)\.setFromObject\(mount,true\)/);
  assert.match(avatars,/avatarGround=/);
  assert.match(avatars,/neutralWalkTime\(model,walk\)/);
  assert.match(avatars,/first\.reset\(\)\.setEffectiveWeight\(1\)\.play\(\)/);
