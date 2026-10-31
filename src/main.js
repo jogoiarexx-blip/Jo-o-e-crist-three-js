@@ -15,6 +15,7 @@ import {DESERT_START,DESERT_SPAWN,DESERT_CHOICES,DESERT_SCENES,checkDesertAnswer
 import {canUseObjective} from './interaction-anchors.js';
 import {findChapterTransition,chapterTransitionAt,chapterEntryPosition} from './chapter-transitions.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
+import {canSwitchHero,isCompletedSave,shouldSimulateWorld} from './game-state.js';
 import {loadAllCharacterGlbs} from './avatar-glb.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
@@ -55,7 +56,7 @@ function puzzleDefinition(kind){
   };
   return CITY_CHOICES[kind]||BUS_CHOICES[kind]||AIRPORT_CHOICES[kind]||ROAD_CHOICES[kind]||DESERT_CHOICES[kind]||null;
 }
-let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null;
+let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null,lastIdleRender=0;
 let walking={x:0,z:0},lastStepSound=0;
 const SOUND_KEY='joaoCrist3DSound_v1';
 let soundEnabled=true;
@@ -95,6 +96,25 @@ function toggleSound(){
 }
 function tone(freq=440,duration=.14,type='sine',volume=.04){audio?.play(freq,duration,type,volume);}
 function winSound(){tone(392,.16,'triangle');setTimeout(()=>tone(494,.2,'triangle'),110);setTimeout(()=>tone(659,.4,'triangle'),230);}
+function heroSwitchAllowed(){
+  return canSwitchHero({
+    started,paused,dialogue,bikeEvent,airportRush,roadRun,choiceKind,lotteryOpen,
+    completed:isCompletedSave(step,FINAL_STEP)
+  });
+}
+function switchHero(){
+  if(!heroSwitchAllowed())return false;
+  setHero(heroId==='joao'?'crist':'joao');
+  return true;
+}
+function resetMovementInput(){
+  held.clear();
+  walking={x:0,z:0};
+  stick.x=stick.y=0;
+  stick.id=null;
+  const thumb=el('joystickThumb');
+  if(thumb)thumb.style.transform='translate(-50%,-50%)';
+}
 function setHero(id,quiet=false){
   if(!actors||!actors[id])return;
   heroId=id;const other=id==='joao'?'crist':'joao';
@@ -506,14 +526,15 @@ function togglePause(){
   audio?.setBusActive?.(step>=BUS_START&&step<AIRPORT_START&&!paused);
   audio?.setRoadActive?.(!!roadRun&&!paused);
   ui.prompt.hidden=true;
-  if(paused){held.clear();walking={x:0,z:0};if(roadRun)writeRoadRun();}
+  if(paused){resetMovementInput();if(roadRun)writeRoadRun();}
 }
 function restart(){
   try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(MEMORY_KEY);localStorage.removeItem(BUS_RHYTHM_KEY);localStorage.removeItem(ROAD_RUN_KEY);}catch{}
   location.reload();
 }
 function pollGamepadActions(){
-  const pad=navigator.getGamepads?.()[0];if(!pad)return;
+  const pad=navigator.getGamepads?.()[0];
+  if(!pad){prevPad={};return;}
   const bindings=[[0,'act'],[1,'dodge'],[3,'switch'],[9,'pause']];
   for(const [i,name] of bindings){
     const down=!!pad.buttons[i]?.pressed;
@@ -526,7 +547,7 @@ function pollGamepadActions(){
       else if(!paused){
         if(name==='act')useTarget();
         if(name==='dodge')dodge();
-        if(name==='switch'&&!dialogue&&!bikeEvent)setHero(heroId==='joao'?'crist':'joao');
+        if(name==='switch')switchHero();
       }
     }
     prevPad[name]=down;
@@ -718,7 +739,10 @@ function render(now){
   requestAnimationFrame(render);
   const elapsed=lastFrame?Math.min(.05,(now-lastFrame)/1000):.016;lastFrame=now;
   update(elapsed);
-  if(!started&&!paused&&world){clockTime+=elapsed;for(const id of ['joao','crist'])animateElder(actors[id],elapsed,0,clockTime);world.update(clockTime,actors[heroId].position,step,elapsed);}
+  // Sem partida ou pausado: nenhuma simulação e até 10 desenhos/s para poupar GPU.
+  // Mantém um desenho ocasional para atualizar a tela, inclusive após carregar GLB.
+  if(!shouldSimulateWorld(started,paused) && now-lastIdleRender<100)return;
+  if(!shouldSimulateWorld(started,paused))lastIdleRender=now;
   renderer?.render(scene,camera);
   if(DEBUG){
     frameCounter++;
@@ -731,7 +755,8 @@ function start(){
   createAudio();el('startBtn').blur();
   const data=readSave();step=data.step;packing=normalizePacking(data.packing);
   memories=readMemories();rhythmProgress=step===17?readRhythm():0;
-  if(step===FINAL_STEP){step=0;packing=[];writeSave();}
+  // A conclusão atual do Deserto é um checkpoint, não autorização para apagar o save.
+  // O reinício completo só é realizado pelo botão explícito JOGAR NOVAMENTE.
   const chapterEntry=chapterTransitionAt(step);
   const spawn=chapterEntry?.spawn||(step===0?{x:-15.5,z:-14.65}:
     step===1?{x:-12,z:-10.5}:
@@ -762,6 +787,12 @@ function start(){
   walking={x:0,z:0};
   ui.start.hidden=true;ui.loading.hidden=true;ui.hud.hidden=false;ui.mobile.hidden=!mobile;
   updateMission();if(step===29||step===33)beginRoadDrive();snapCamera();
+  if(isCompletedSave(step,FINAL_STEP)){
+    ui.end.hidden=false;
+    ui.hud.hidden=true;ui.mobile.hidden=true;ui.mission.hidden=true;ui.prompt.hidden=true;
+    started=false;
+    return;
+  }
   if(step===0)showDialogue(INTRO,()=>notify('Caminhe até o café dentro da casa para começar o dia.'));
   else if(step===7)notify('Bem-vindos à cidade! Procure o painel de informações da praça.');
   else if(step===BUS_START)notify('Vocês estão dentro da Excursão Estelar. Encontre um lugar no corredor.');
@@ -791,13 +822,13 @@ function bindInputs(){
       return;
     }
     if(!started||paused)return;
-    if(e.code==='Tab'&&!dialogue&&!bikeEvent&&!airportRush&&!roadRun&&!lotteryOpen){setHero(heroId==='joao'?'crist':'joao');return;}
+    if(e.code==='Tab'){switchHero();return;}
     if(e.code==='KeyE'||e.code==='Enter'){useTarget();return;}
     if(e.code==='Space'){dodge();}
   });
   window.addEventListener('keyup',e=>held.delete(e.code));
-  window.addEventListener('blur',()=>{held.clear();stick.x=stick.y=0;if(started&&!paused)togglePause();});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){held.clear();stick.x=stick.y=0;if(started&&!paused)togglePause();}});
+  window.addEventListener('blur',()=>{resetMovementInput();prevPad={};if(started&&!paused)togglePause();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){resetMovementInput();prevPad={};if(started&&!paused)togglePause();}});
   ui.dialog.addEventListener('click',()=>{if(!paused)nextDialogue();});
   el('startBtn').addEventListener('click',start);
   ui.soundBtn.addEventListener('click',toggleSound);
@@ -807,7 +838,7 @@ function bindInputs(){
   el('restartBtn').addEventListener('click',restart);
   el('replayBtn').addEventListener('click',restart);
   el('touchAction').addEventListener('pointerdown',e=>{e.preventDefault();useTarget();});
-  el('touchSwitch').addEventListener('pointerdown',e=>{e.preventDefault();if(started&&!dialogue&&!bikeEvent&&!airportRush&&!roadRun&&!choiceKind&&!lotteryOpen)setHero(heroId==='joao'?'crist':'joao');});
+  el('touchSwitch').addEventListener('pointerdown',e=>{e.preventDefault();switchHero();});
   el('touchDodge').addEventListener('pointerdown',e=>{e.preventDefault();dodge();});
   let cameraPointer=null,lastX=0,lastY=0;
   ui.canvas.addEventListener('pointerdown',e=>{if(!started||paused||dialogue||lotteryOpen||roadRun)return;cameraPointer=e.pointerId;lastX=e.clientX;lastY=e.clientY;ui.canvas.setPointerCapture(e.pointerId);});
@@ -874,7 +905,7 @@ function setup(){
   }
   setHero('joao',true);world.setTarget('wake');
   const savedProgress=readSave();
-  el('startBtn').textContent=savedProgress.step===FINAL_STEP?'JOGAR NOVAMENTE':
+  el('startBtn').textContent=isCompletedSave(savedProgress.step,FINAL_STEP)?'REVER CONCLUSÃO DO DESERTO':
     savedProgress.step>0?'CONTINUAR A AVENTURA':'COMEÇAR A AVENTURA';
   onResize();bindInputs();snapCamera();
   ui.loading.hidden=true;ui.debug.hidden=!DEBUG;

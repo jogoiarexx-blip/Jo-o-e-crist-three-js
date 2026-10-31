@@ -1,6 +1,14 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.5 — GLBs reais, ajustes de escala, apoio dos pés e direção dos controles).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.6 — controles unificados, save da conclusão preservado e menu sem simulação desnecessária).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+
+## QA-05 — Primeira execução do plano-mestre (v0.6.6)
+
+- Teclado, toque e gamepad usam a mesma política de troca entre João e Crist; nenhum deles pode trocar durante eventos de bicicleta, corrida do aeroporto, direção da van, diálogos, escolhas ou loteria.
+- O gamepad desconectado limpa o histórico de botões; perda de foco e pausa limpam as entradas de movimento e o joystick virtual.
+- O estado 46 (Deserto concluído) deixa de reiniciar automaticamente o jogo ao reabrir: a conclusão fica preservada para a futura transição a Vegas; somente **REINICIAR AVENTURA DO ZERO** apaga o save.
+- No menu inicial e pausa não há atualização de NPCs/mundo, e a renderização é limitada a 10 FPS. O carregamento inicial ainda cria todos os cenários; o lazy loading permanece pendente.
+- [Relatório técnico e testes QA-05](QA-05-INPUT-SAVE-MENU.md).
 
 ## Plano-mestre de evolução e fases ainda não criadas
 
