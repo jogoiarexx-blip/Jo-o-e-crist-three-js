@@ -48,13 +48,13 @@ test('porteira conecta trechos de cerca e só libera a passagem ao abrir',()=>{
 test('lados W,A,S,D e joystick são previsíveis na orientação da câmera',()=>{
   const eps=1e-8;
   const close=(a,b)=>assert.ok(Math.abs(a-b)<eps, a+' != '+b);
-  close(cameraRelativeMove(1,0,0).x,1); // D/analógico direito -> direita
-  close(cameraRelativeMove(-1,0,0).x,-1); // A -> esquerda
+  close(cameraRelativeMove(1,0,0).x,-1); // D/analógico direito -> direita visual
+  close(cameraRelativeMove(-1,0,0).x,1); // A -> esquerda visual
   close(cameraRelativeMove(0,1,0).z,1); // W -> frente
   close(cameraRelativeMove(0,-1,0).z,-1); // S -> trás
   close(cameraRelativeMove(0,1,Math.PI/2).x,1); // girou à direita: W segue direita do mundo
-  close(cameraRelativeMove(1,0,Math.PI/2).z,-1); // D ainda à direita da tela
-  assert.ok(rotateCameraRight(0,50)>0,'arrastar à direita deve virar visão para a direita');
+  close(cameraRelativeMove(1,0,Math.PI/2).z,1); // D ainda à direita da tela
+  assert.ok(rotateCameraRight(0,50)<0,'arrastar à direita deve virar visão para a direita');
   assert.equal(cameraRelativeMove(0,0,1.5).x,0);
   close(Math.hypot(...Object.values(cameraRelativeMove(3,4,1))),1);
 });

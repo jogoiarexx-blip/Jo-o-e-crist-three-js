@@ -27,6 +27,7 @@ export function groundedFootCorrection(footY,referenceY,dt,responsiveness=26){
   if(!Number.isFinite(footY)||!Number.isFinite(referenceY))return 0;
   const t=Math.max(0,Math.min(.05,Number.isFinite(dt)?dt:0));
   const error=Math.max(-.22,Math.min(.22,referenceY-footY));
+  if(t===0||error===0)return 0;
   return error*(1-Math.exp(-Math.max(0,responsiveness)*t));
 }
 export function getCharacterAnimationName(clips,moving,gesture,dancing){
