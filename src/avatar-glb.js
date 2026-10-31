@@ -3,7 +3,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 
 // Estes arquivos são fornecidos pelo criador do jogo. O fallback procedural
 // só aparece se o GLB estiver ausente, corrompido ou inacessível.
-import {CHARACTER_ASSETS,CHARACTER_PACKED_PARTS,CHARACTER_CLIPS,CHARACTER_HEIGHTS,normalizeCharacterHeight,groundedFootCorrection,getCharacterAnimationName} from './avatar-logic.js';
+import {CHARACTER_ASSETS,CHARACTER_PACKED_PARTS,CHARACTER_CLIPS,CHARACTER_HEIGHTS,normalizeCharacterHeight,groundedFootCorrection,isFootContactBone,getCharacterAnimationName} from './avatar-logic.js';
 export {CHARACTER_ASSETS,CHARACTER_CLIPS,CHARACTER_HEIGHTS,normalizeCharacterHeight,getCharacterAnimationName} from './avatar-logic.js';
 
 function makeIdleClip(walk){
@@ -125,7 +125,7 @@ export async function loadCharacterGlb(root,id,loader=new GLTFLoader()){
   if(Number.isFinite(posedBounds.min.y))mount.position.y-=posedBounds.min.y;
   const feet=[];
   model.traverse(node=>{
-    if(node.isBone&&/(foot|ankle)/i.test(node.name)&&!/(ik|target|pole|ctrl)/i.test(node.name))
+    if(node.isBone&&isFootContactBone(node.name))
       feet.push(node);
   });
   mount.updateMatrixWorld(true);

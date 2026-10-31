@@ -471,6 +471,9 @@ export function buildWorld(scene){
     get road(){return chapterCache.peek('road');},
     get desert(){return chapterCache.peek('desert');},
     loadedChapters(){return chapterCache.names();},
+    // Criar somente o hub solicitado, oculto e sem colisão ativa.
+    // A futura passagem do capítulo usará a mesma instância em cache.
+    prepareChapter(id){return chapterCache.get(id);},
     openGate(){
       if(gateOpened)return;
       gateOpened=true;

@@ -6,6 +6,8 @@ import {cameraRelativeMove,rotateCameraRight} from './controls.js';
 import {isInsideHouse,FARM_HOUSE} from './farm-layout.js';
 import {FARM_MEMORIES,nearbyMemory,normalizeMemories} from './farm-memories.js';
 import {cameraRig} from './camera-logic.js';
+import {cameraClearanceDistance} from './camera-occlusion.js';
+import {nextChapterToPrewarm} from './chapter-prewarm.js';
 import {easeVelocity,moveWithCollision,joystickYaw} from './locomotion.js';
 import {CITY_CHOICES,findCityNpc,checkCityAnswer} from './city-state.js';
 import {BUS_START,BUS_SPAWN,BUS_CHOICES,BUS_SCENES,RHYTHM_SEQUENCE,RHYTHM_LABELS,RHYTHM_OPTIONS,checkBusAnswer,normalizeRhythmProgress,inputRhythm,findBusNpc} from './bus-state.js';
@@ -57,6 +59,7 @@ function puzzleDefinition(kind){
   return CITY_CHOICES[kind]||BUS_CHOICES[kind]||AIRPORT_CHOICES[kind]||ROAD_CHOICES[kind]||DESERT_CHOICES[kind]||null;
 }
 let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null,lastIdleRender=0;
+const prewarmPending=new Set();
 let walking={x:0,z:0},lastStepSound=0;
 const SOUND_KEY='joaoCrist3DSound_v1';
 let soundEnabled=true;
@@ -123,6 +126,24 @@ function setHero(id,quiet=false){
   actors[other].userData.isCompanion=true;actors[id].userData.isCompanion=false;
   walking={x:0,z:0};
 }
+// Antecipar o próximo cenário quando o navegador estiver ocioso,
+ // mantendo a transição livre da construção síncrona quando possível.
+function scheduleChapterPrewarm(){
+  const id=nextChapterToPrewarm(step);
+  if(!id||!world||prewarmPending.has(id)||world.loadedChapters().includes(id))return;
+  prewarmPending.add(id);
+  const build=()=>{
+    prewarmPending.delete(id);
+    if(!world||!started||paused||world.loadedChapters().includes(id))return;
+    try{
+      const t=performance.now();
+      world.prepareChapter(id);
+      if(DEBUG)console.info('[Cenário preparado]',id,Math.round(performance.now()-t)+'ms');
+    }catch(error){console.warn('[Pré-carregamento]',id,error);}
+  };
+  if(typeof requestIdleCallback==='function')requestIdleCallback(build,{timeout:3500});
+  else setTimeout(build,120);
+}
 function activeTargetId(){
   return step===4?nextPackingTarget(packing):getQuest(step).id;
 }
@@ -153,6 +174,7 @@ function updateMission(){
   audio?.setRoadActive?.(!!roadRun&&!paused);
   if(step>6)world.setGateOpen?.(true);
   if(step>=FINAL_STEP)ui.prompt.hidden=true;
+  scheduleChapterPrewarm();
 }
 function advanceTo(next){
   const previous=step;
@@ -527,6 +549,7 @@ function togglePause(){
   audio?.setRoadActive?.(!!roadRun&&!paused);
   ui.prompt.hidden=true;
   if(paused){resetMovementInput();if(roadRun)writeRoadRun();}
+  else scheduleChapterPrewarm();
 }
 function restart(){
   try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(MEMORY_KEY);localStorage.removeItem(BUS_RHYTHM_KEY);localStorage.removeItem(ROAD_RUN_KEY);}catch{}
@@ -624,19 +647,9 @@ function updateCamera(dt,immediate=false){
   const inside=isInsideHouse(p.x,p.z)||(step>=BUS_START&&step<ROAD_START);
   const profile=cameraRig(inside,zoom,pitch);
   const forward=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
-  let dist=profile.distance;
   const focus=p.clone().add(new THREE.Vector3(0,1.35,0));
-  // O teto desaparece no interior; encurtar a distância quando a câmera alcança uma parede.
-  for(let i=1;i<=16;i++){
-    const u=i/16;
-    const cx=focus.x-forward.x*profile.distance*u;
-    const cz=focus.z-forward.z*profile.distance*u;
-    const cy=focus.y+profile.lift*u;
-    if(blocked(cx,cz,.16,cy)){
-      dist=Math.min(dist,Math.max(profile.minDistance,profile.distance*(i-1)/16));
-      break;
-    }
-  }
+  // Não impor distância mínima se houver uma parede mais perto que ela.
+  const dist=cameraClearanceDistance(focus,yaw,profile.distance,profile.lift,blocked);
   const wanted=focus.clone().addScaledVector(forward,-dist);
   wanted.y+=profile.lift;
   const look=focus.clone().addScaledVector(forward,profile.ahead);

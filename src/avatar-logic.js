@@ -23,6 +23,12 @@ export function normalizeCharacterHeight(height,target=CHARACTER_HEIGHT){
   return target/height;
 }
 // Corrige a oscilação do pé de apoio sem tremer durante trocas de clipes.
+// Compatível com rigs Meshy/Mixamo que chamam o osso de Foot, Ankle ou Toe.
+// Ignora controladores de IK para não usar a posição dos targets como solo.
+export function isFootContactBone(name){
+  return typeof name==='string'&&/(foot|ankle|toe)/i.test(name)&&
+    !/(ik|target|pole|ctrl|control|helper)/i.test(name);
+}
 export function groundedFootCorrection(footY,referenceY,dt,responsiveness=26){
   if(!Number.isFinite(footY)||!Number.isFinite(referenceY))return 0;
   const t=Math.max(0,Math.min(.05,Number.isFinite(dt)?dt:0));

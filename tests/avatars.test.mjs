@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
  CHARACTER_ASSETS,CHARACTER_PACKED_PARTS,CHARACTER_HEIGHT,CHARACTER_HEIGHTS,CHARACTER_CLIPS,
- normalizeCharacterHeight,groundedFootCorrection,getCharacterAnimationName
+ normalizeCharacterHeight,groundedFootCorrection,isFootContactBone,getCharacterAnimationName
 } from '../src/avatar-logic.js';
 
 test('models apontam para os dois GLBs enviados, sem inverter João e Crist',()=>{
@@ -79,4 +79,12 @@ test('pés são corrigidos gradualmente sem salto nem avanço após pausa',()=>{
  assert.equal(groundedFootCorrection(.5,0,0),0);
  assert.equal(groundedFootCorrection(NaN,0,1/60),0);
  assert.equal(groundedFootCorrection(0,NaN,1/60),0);
+});
+
+test('feet classifiers handle toe and ankle names',()=>{
+ assert.equal(isFootContactBone('LeftToeBase'),true);
+ assert.equal(isFootContactBone('mixamorigLeftFoot'),true);
+ assert.equal(isFootContactBone('LeftAnkle'),true);
+ assert.equal(isFootContactBone('LeftFoot_IK'),false);
+ assert.equal(isFootContactBone('Hips'),false);
 });

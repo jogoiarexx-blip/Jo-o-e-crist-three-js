@@ -1,6 +1,14 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.7 — hubs criados sob demanda, reaproveitamento de cenários e diagnóstico de renderização).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.8 — preparação antecipada de capítulos, câmera contra oclusão e identificação de ossos de apoio dos pés).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+
+## QA-07 — Preparação dos próximos ambientes, câmera e pés (v0.6.8)
+
+- Quando o jogador se aproxima de uma transição de capítulo, o próximo hub é montado em um período ocioso do navegador, se possível. Isso desloca parte do custo de construção para antes da troca de cenário, sem pré-criar os quatro hubs na tela inicial.
+- A câmera recua apenas até o ponto livre entre personagem e parede, inclusive quando o obstáculo está mais próximo que a distância mínima anterior.
+- A identificação de ossos de pé nos GLBs agora inclui nomes com Toe, Foot e Ankle, excluindo controladores de IK. A avaliação visual da sola no chão continua necessária.
+- Novos testes para pré-carregamento, câmera e nomenclatura dos ossos; sem alterações nos saves v7 ou nas missões.
+- [Relatório técnico QA-07](QA-07-PREWARM-CAMERA-PES.md).
 
 ## QA-06 — Montagem sob demanda dos ambientes (v0.6.7)
 
