@@ -1,6 +1,14 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.11 — Fazenda e Rodoviária sem teleporte, caminhada pela porteira).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.12 — guichê do portão 2 corrigido e desafios da Route 66 separados).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+
+## QA-11 — Guichê: alternativas de portão funcionando (v0.6.12)
+
+- **Bug reproduzido pela lógica do código:** a janela do guichê exibia as opções da Rodoviária e o título “CAPÍTULO 04 · ROUTE 66”, e validava o Portão 2 contra a alternativa **66** da estrada. O identificador `route` estava presente em ambos os capítulos.
+- Agora o resolver `src/puzzle-resolver.js` liga a pergunta, o capítulo exibido e a validação à **mesma definição**: `route` é o guichê da Rodoviária, com resposta **2**; `roadRoute` é a Route 66, com resposta **66**.
+- Corrigida também a abertura de `roadRepair`, que anteriormente não correspondia ao identificador `repair` usado na estrada.
+- Adicionados testes para todos os 16 desafios de múltipla escolha: cada um deve abrir com três alternativas, ter exatamente uma resposta certa e avançar para seu capítulo correto.
+- [Relatório de reprodução e testes QA-11](QA-11-GUICHE-PORTAO-2.md).
 
 ## QA-10 — Caminhada contínua da porteira até a cidade (v0.6.11)
 

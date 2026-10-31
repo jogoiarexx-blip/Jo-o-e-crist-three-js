@@ -9,17 +9,18 @@ import {cameraRig} from './camera-logic.js';
 import {cameraClearanceDistance} from './camera-occlusion.js';
 import {nextChapterToPrewarm} from './chapter-prewarm.js';
 import {easeVelocity,moveWithCollision,joystickYaw} from './locomotion.js';
-import {CITY_CHOICES,findCityNpc,checkCityAnswer} from './city-state.js';
-import {BUS_START,BUS_SPAWN,BUS_CHOICES,BUS_SCENES,RHYTHM_SEQUENCE,RHYTHM_LABELS,RHYTHM_OPTIONS,checkBusAnswer,normalizeRhythmProgress,inputRhythm,findBusNpc} from './bus-state.js';
-import {AIRPORT_START,AIRPORT_SPAWN,AIRPORT_CHOICES,AIRPORT_SCENES,checkAirportAnswer,findAirportNpc,airportRushResult} from './airport-state.js';
-import {ROAD_START,ROAD_CENTER,ROAD_SPAWN,ROAD_CHOICES,ROAD_SCENES,ROAD_DRIVES,checkRoadAnswer,findRoadNpc,initialRoadRun,normalizeRoadRun,advanceRoadRun,roadGrade} from './road-state.js';
-import {DESERT_START,DESERT_SPAWN,DESERT_CHOICES,DESERT_SCENES,checkDesertAnswer,findDesertNpc,isDesertShade,advanceDesertHeat,desertHeatLabel,desertCarryActive} from './desert-state.js';
+import {findCityNpc} from './city-state.js';
+import {BUS_START,BUS_SPAWN,BUS_SCENES,RHYTHM_SEQUENCE,RHYTHM_LABELS,RHYTHM_OPTIONS,normalizeRhythmProgress,inputRhythm,findBusNpc} from './bus-state.js';
+import {AIRPORT_START,AIRPORT_SPAWN,AIRPORT_SCENES,findAirportNpc,airportRushResult} from './airport-state.js';
+import {ROAD_START,ROAD_CENTER,ROAD_SPAWN,ROAD_SCENES,ROAD_DRIVES,findRoadNpc,initialRoadRun,normalizeRoadRun,advanceRoadRun,roadGrade} from './road-state.js';
+import {DESERT_START,DESERT_SPAWN,DESERT_SCENES,findDesertNpc,isDesertShade,advanceDesertHeat,desertHeatLabel,desertCarryActive} from './desert-state.js';
 import {canUseObjective} from './interaction-anchors.js';
 import {findChapterTransition,chapterTransitionAt,chapterEntryPosition} from './chapter-transitions.js';
 import {gateFollowerWaypoint,canSnapDistantCompanion,companionFollowSpeed} from './outdoor-continuity.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
 import {canSwitchHero,isCompletedSave,shouldSimulateWorld} from './game-state.js';
 import {LOTTERY_STAGE,nextLotteryStage,lotteryStageLabel} from './lottery-state.js';
+import {resolvePuzzle} from './puzzle-resolver.js';
 import {loadAllCharacterGlbs} from './avatar-glb.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
@@ -58,7 +59,7 @@ function puzzleDefinition(kind){
     text:'Sequência: PALMAS, PASSO, GIRO, PALMAS. Próximo movimento: '+RHYTHM_LABELS[RHYTHM_SEQUENCE[rhythmProgress]]+'.',
     options:RHYTHM_OPTIONS
   };
-  return CITY_CHOICES[kind]||BUS_CHOICES[kind]||AIRPORT_CHOICES[kind]||ROAD_CHOICES[kind]||DESERT_CHOICES[kind]||null;
+  return resolvePuzzle(kind)?.puzzle||null;
 }
 let playerVelocity=0,frameCounter=0,fpsStart=0,fps=0,audio=null,lastIdleRender=0;
 const prewarmPending=new Set();
@@ -411,10 +412,11 @@ function updateRoadDrive(dt){
   if(result.completed)finishRoadDrive();
 }
 function openCityChoice(kind){
-  const puzzle=puzzleDefinition(kind);
+  const resolved=resolvePuzzle(kind);
+  const puzzle=kind==='rhythm'?puzzleDefinition(kind):resolved?.puzzle;
   if(!puzzle||dialogue||lotteryOpen||choiceKind||paused)return;
   choiceKind=kind;choiceIndex=0;
-  ui.choice.querySelector('.eyebrow').textContent=kind in DESERT_CHOICES?'CAPÍTULO 05 · DESERTO':kind in ROAD_CHOICES?'CAPÍTULO 04 · ROUTE 66':kind==='rhythm'?'CAPÍTULO 02 · APRESENTAÇÃO':kind in AIRPORT_CHOICES?'CAPÍTULO 03 · AEROPORTO':kind in BUS_CHOICES?'CAPÍTULO 02 · EXCURSÃO ERRADA':'CAPÍTULO 01 · RODOVIÁRIA';
+  ui.choice.querySelector('.eyebrow').textContent=kind==='rhythm'?'CAPÍTULO 02 · APRESENTAÇÃO':resolved.chapter;
   ui.choiceHeading.textContent=puzzle.heading;
   ui.choiceText.textContent=puzzle.text;
   ui.choiceButtons.replaceChildren();
@@ -460,7 +462,9 @@ function submitCityChoice(optionId){
     }
     return;
   }
-  const correct=kind in DESERT_CHOICES?checkDesertAnswer(kind,optionId):kind in ROAD_CHOICES?checkRoadAnswer(kind,optionId):kind in CITY_CHOICES?checkCityAnswer(kind,optionId):kind in BUS_CHOICES?checkBusAnswer(kind,optionId):checkAirportAnswer(kind,optionId);
+  // Resolver e validar devem referir-se ao MESMO puzzle, não a objetos
+  // com chaves iguais em capítulos diferentes (route existe em 2 fases).
+  const correct=resolvePuzzle(kind)?.check(optionId)===true;
   choiceKind=null;ui.choice.hidden=true;ui.mobile.hidden=paused||!mobile;
   if(correct){
     tone(640,.2,'triangle',.033);
