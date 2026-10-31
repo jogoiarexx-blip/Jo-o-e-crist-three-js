@@ -1,6 +1,6 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.1 — QA-01: isolamento de cenários e colisões dos capítulos 00–05).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.2 — QA-02: interações físicas alinhadas nos capítulos 02 e 03).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
 
 ## Jogar
 
@@ -11,6 +11,22 @@ https://jogoiarexx-blip.github.io/Jo-o-e-crist-three-js/
 **Celular:** analógico à esquerda, botões AÇÃO / TROCAR / ESQUIVAR, arrastar a tela gira a câmera.
 
 **Gamepad:** analógico esquerdo move, direito gira a câmera, A interage, B esquiva, Y troca personagem, Start pausa (diálogos e bicicleta estão acessíveis por teclado/touch; integração completa do gamepad seguirá).
+
+## QA-02 — Objetos realmente interativos (v0.6.2)
+
+Segunda revisão da auditoria, **sem adicionar capítulos, remover tarefas ou reiniciar saves**.
+
+- Reposicionadas as sete missões da Excursão Estelar: assento próximo à janela, artistas, caixa ESTELAR, microfone, mesa de som, palco e cabine do motorista.
+- Reposicionadas as oito missões do Aeroporto Boa Sorte: painel, check-in, Achados e Perdidos, mala/farofa, scanner, painel C7, esteira e balcão de embarque.
+- O marcador agora fica em **um ponto transitável diante do objeto visual**, e não no corredor distante. Raio de interação reduzido para 1,25–1,8 unidades no ônibus e 1,3–1,65 no aeroporto.
+- Interações nesses dois capítulos verificam alcance e **linha de visão entre o personagem e o marcador**. A mesma função controla o aviso na tela e o botão AÇÃO/E, evitando discrepâncias e interação através de paredes.
+- Corrigida a posição de Luzia, Duda, Nico, Nina, Léo e Mara para que não se sobreponham aos colliders dos assentos e balcões.
+- `BUS_PROPS` e `AIRPORT_PROPS` registram posições reais de bancos/equipamentos e parte do cenário passa a reutilizar essas referências, diminuindo divergência futura.
+- Testes `interaction-anchors.test.mjs`: **15 missões acessíveis por navegação em grade com linha de visão**, NPCs livres de colisão e tentativas inválidas através de equipamentos.
+- Mantidos os 47 estados da aventura e save principal na versão interna 7, incluindo compatibilidade com saves das versões anteriores.
+- [Relatório técnico QA-02](QA-02-ANCORAS-INTERACAO.md) e [auditoria dos capítulos](AUDITORIA-CAPITULOS-00-05.md).
+
+**Pendente:** jogar no navegador com câmera real, personagem e controle mobile para validar legibilidade e animações; testes de geometria não substituem essas verificações.
 
 ## QA-01 — Colisões e isolamento entre capítulos (v0.6.1)
 

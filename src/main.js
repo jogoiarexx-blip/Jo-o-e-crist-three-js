@@ -12,6 +12,7 @@ import {BUS_START,BUS_SPAWN,BUS_CHOICES,BUS_SCENES,RHYTHM_SEQUENCE,RHYTHM_LABELS
 import {AIRPORT_START,AIRPORT_SPAWN,AIRPORT_CHOICES,AIRPORT_SCENES,checkAirportAnswer,findAirportNpc,airportRushResult} from './airport-state.js';
 import {ROAD_START,ROAD_CENTER,ROAD_SPAWN,ROAD_CHOICES,ROAD_SCENES,ROAD_DRIVES,checkRoadAnswer,findRoadNpc,initialRoadRun,normalizeRoadRun,advanceRoadRun,roadGrade} from './road-state.js';
 import {DESERT_START,DESERT_SPAWN,DESERT_CHOICES,DESERT_SCENES,checkDesertAnswer,findDesertNpc,isDesertShade,advanceDesertHeat,desertHeatLabel,desertCarryActive} from './desert-state.js';
+import {canUseObjective} from './interaction-anchors.js';
 import {createElder,animateElder,gestureElder} from './characters.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
@@ -190,7 +191,7 @@ function nextDialogue(){
 function nearTarget(){
   if(!world||!actors||step>=FINAL_STEP)return null;
   const m=world.markers[activeTargetId()];if(!m)return null;
-  return Math.hypot(actors[heroId].position.x-m.point.x,actors[heroId].position.z-m.point.z)<=m.radius?m:null;
+  return canUseObjective(m,actors[heroId].position,world.colliders,step)?m:null;
 }
 function useTarget(){
   if(paused||!started)return;
@@ -707,7 +708,7 @@ function update(dt){
     ui.distance.textContent=Math.ceil(distance)+' METROS';
     const look=Math.atan2(marker.point.x-pos.x,marker.point.z-pos.z)-yaw;
     ui.pointer.style.transform='rotate('+(-look*180/Math.PI)+'deg)';
-    const close=distance<=marker.radius;
+    const close=canUseObjective(marker,pos,world.colliders,step);
     const extra=step<=6&&!close?nearbyMemory(pos,[...memories]):null;
     const cityNpc=step>=7&&step<BUS_START&&!close?findCityNpc(pos):null;
     const busNpc=step>=BUS_START&&step<AIRPORT_START&&!close?findBusNpc(pos):null;

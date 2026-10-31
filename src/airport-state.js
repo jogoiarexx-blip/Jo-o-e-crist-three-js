@@ -3,6 +3,17 @@ export const AIRPORT_START=19;
 export const AIRPORT_END=26;
 export const AIRPORT_ROOM=Object.freeze({xMin:37,xMax:96,zMin:-40.8,zMax:-23.1,cx:66.5,cz:-31.5});
 export const AIRPORT_SPAWN=Object.freeze({x:40.0,z:-31.5});
+// Fonte única para as posições dos objetos e aferição dos gatilhos.
+export const AIRPORT_PROPS=Object.freeze({
+  panel:Object.freeze({x:43,z:-27.7}),
+  checkin:Object.freeze({x:51,z:-26.3}),
+  lost:Object.freeze({x:60,z:-36.6}),
+  bags:Object.freeze({x:69,z:-36.6}),
+  scanner:Object.freeze({x:76,z:-26.5}),
+  gate:Object.freeze({x:82,z:-27.1}),
+  belt:Object.freeze({x:87.3,z:-31.5}),
+  board:Object.freeze({x:93,z:-26.4})
+});
 export const AIRPORT_QUESTS=Object.freeze([
   {id:'airWelcome',title:'Encontre o balcão de informações',hint:'Explore o saguão e procure o painel de partidas. O voo certo é o fictício BS408 para conexão internacional.'},
   {id:'airCheckin',title:'Crist: faça o check-in correto',hint:'Leia a passagem e escolha o atendimento do voo BS408, conexão para Las Vegas.'},
@@ -14,27 +25,27 @@ export const AIRPORT_QUESTS=Object.freeze([
   {id:'airBoard',title:'Embarque no voo internacional',hint:'Mostre os cartões no portão certo e embarque com João e Crist juntos.'}
 ]);
 export const AIRPORT_TARGETS=Object.freeze({
-  airWelcome:Object.freeze({x:43,z:-31.5,radius:2.4,label:'Consultar painel de voos'}),
-  airCheckin:Object.freeze({x:50.5,z:-31.5,radius:2.3,label:'Abrir check-in'}),
-  airPassport:Object.freeze({x:60,z:-31.5,radius:2.4,label:'Conferir achados e perdidos'}),
-  airFarofa:Object.freeze({x:68.5,z:-31.5,radius:2.45,label:'Preparar a mala e a farofa'}),
-  airSecurity:Object.freeze({x:76,z:-31.5,radius:2.25,label:'Organizar bandejas'}),
-  airGate:Object.freeze({x:82,z:-31.5,radius:2.35,label:'Ler painel do portão'}),
-  airRush:Object.freeze({x:87.5,z:-31.5,radius:2.2,label:'Entrar na esteira rolante'}),
-  airBoard:Object.freeze({x:93,z:-31.5,radius:2.1,label:'Apresentar cartões de embarque'})
+  airWelcome:Object.freeze({x:43,z:-28.95,radius:1.35,label:'Ler o painel de partidas'}),
+  airCheckin:Object.freeze({x:50.5,z:-28.25,radius:1.3,label:'Atendimento no balcão B · BS408'}),
+  airPassport:Object.freeze({x:60,z:-34.85,radius:1.3,label:'Pesquisar as pastas em Achados e Perdidos'}),
+  airFarofa:Object.freeze({x:69,z:-34.8,radius:1.3,label:'Inspecionar mala e pote de farofa'}),
+  airSecurity:Object.freeze({x:76,z:-28.4,radius:1.3,label:'Preparar bandejas junto ao scanner'}),
+  airGate:Object.freeze({x:82,z:-28.6,radius:1.3,label:'Ler painel atualizado do portão C7'}),
+  airRush:Object.freeze({x:87.5,z:-31.5,radius:1.65,label:'Entrar na esteira rolante'}),
+  airBoard:Object.freeze({x:93,z:-28.15,radius:1.3,label:'Mostrar cartões no balcão do portão C7'})
 });
 export const AIRPORT_NPCS=Object.freeze([
-  {id:'nina',name:'Nina, atendente',x:51.5,z:-27.65,radius:2.8,lines:[
+  {id:'nina',name:'Nina, atendente',x:52.7,z:-28.5,radius:1.65,lines:[
     ['NINA','Bom dia! Se forem viajar para fora do país, confiram os dados do voo BS408.'],
     ['CRIST','Eu confiro tudo. O João lê a primeira palavra e já sai correndo.'],
     ['JOÃO','Foi uma vez só! Ou duas, se contar o ônibus.']
   ]},
-  {id:'leo',name:'Léo, achados e perdidos',x:59.7,z:-35.3,radius:2.75,lines:[
+  {id:'leo',name:'Léo, achados e perdidos',x:59.7,z:-34.9,radius:1.65,lines:[
     ['LÉO','Toda hora alguém esquece uma coisa. Hoje já apareceu até uma dentadura.'],
     ['JOÃO','Não era minha, eu garanto! Mas meu passaporte sumiu.'],
     ['LÉO','Olhem a pasta azul com o nome João, perto do balcão.']
   ]},
-  {id:'mara',name:'Mara, inspeção',x:76,z:-27.7,radius:2.65,lines:[
+  {id:'mara',name:'Mara, inspeção',x:76,z:-28.6,radius:1.65,lines:[
     ['MARA','Moedas e chaves vão para a bandeja. Bagagem passa separada.'],
     ['CRIST','Pode deixar, senhora. Já chegamos até aqui sem perder mais nada.'],
     ['JOÃO','Só não me peça pra passar meu chapéu na máquina!']

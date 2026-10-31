@@ -3,6 +3,15 @@ export const BUS_START=12;
 export const BUS_END=18;
 export const BUS_ROOM=Object.freeze({cx:109,cz:-32.6,xMin:99.5,xMax:118.5,zMin:-37,zMax:-28.2});
 export const BUS_SPAWN=Object.freeze({x:101.3,z:-32.55});
+// Coordenadas dos props reais: também utilizadas pelo construtor do cenário.
+export const BUS_PROPS=Object.freeze({
+  seat:Object.freeze({x:103,z:-35.6}),
+  case:Object.freeze({x:116.65,z:-29.97}),
+  rack:Object.freeze({x:116.55,z:-35.48}),
+  mic:Object.freeze({x:115.5,z:-33.8}),
+  stage:Object.freeze({x:109.1,z:-32.5}),
+  driver:Object.freeze({x:100.5,z:-32.55})
+});
 export const BUS_QUESTS=Object.freeze([
   {id:'busSeat',title:'Encontre os lugares da excursão',hint:'Entre pelo corredor, conheça o ônibus e encontre dois assentos livres.'},
   {id:'busCrew',title:'Conheça a trupe de artistas',hint:'Converse com a equipe e descubra por que todos estão vestidos para um espetáculo.'},
@@ -13,24 +22,24 @@ export const BUS_QUESTS=Object.freeze([
   {id:'busReveal',title:'Descubra a verdadeira excursão',hint:'Volte à frente do ônibus e converse com a motorista para descobrir o engano.'}
 ]);
 export const BUS_TARGETS=Object.freeze({
-  busSeat:Object.freeze({x:103,z:-32.55,radius:2.25,label:'Sentar perto da janela'}),
-  busCrew:Object.freeze({x:107.9,z:-32.55,radius:2.35,label:'Conversar com a trupe'}),
-  busCase:Object.freeze({x:113.2,z:-32.55,radius:2.15,label:'Abrir compartimento de equipamento'}),
-  busInspect:Object.freeze({x:115.5,z:-32.55,radius:2.15,label:'Inspecionar cabos da mesa de som'}),
-  busConnect:Object.freeze({x:115.5,z:-32.55,radius:2.15,label:'Reconectar o cabo correto'}),
-  busDance:Object.freeze({x:108.7,z:-32.55,radius:2.4,label:'Começar número de dança'}),
-  busReveal:Object.freeze({x:102.1,z:-32.55,radius:2.25,label:'Perguntar o destino à motorista'})
+  busSeat:Object.freeze({x:103,z:-34.05,radius:1.3,label:'Sentar no banco próximo à janela'}),
+  busCrew:Object.freeze({x:107.5,z:-32.35,radius:1.55,label:'Conhecer os artistas no corredor'}),
+  busCase:Object.freeze({x:116.5,z:-31.5,radius:1.25,label:'Examinar a caixa ESTELAR no bagageiro'}),
+  busInspect:Object.freeze({x:115.35,z:-33.55,radius:1.25,label:'Examinar microfone e cabos da mesa'}),
+  busConnect:Object.freeze({x:116.3,z:-34.05,radius:1.25,label:'Ligar o cabo na mesa de som'}),
+  busDance:Object.freeze({x:109.1,z:-32.55,radius:1.8,label:'Subir ao palco improvisado'}),
+  busReveal:Object.freeze({x:101,z:-32.55,radius:1.5,label:'Conferir destino junto à cabine do motorista'})
 });
 export const BUS_NPCS=Object.freeze([
-  Object.freeze({id:'luzia',name:'Luzia, cantora',x:107.0,z:-30.7,radius:2.2,
+  Object.freeze({id:'luzia',name:'Luzia, cantora',x:107.55,z:-31.75,radius:1.65,
     lines:[['LUZIA','Se vocês ouviram o ensaio, sejam bem-vindos! Estamos preparando o show.'],
       ['JOÃO','Eu só sei cantar modinha de viola.'],
       ['LUZIA','Perfeito! Só não entre um compasso antes de todo mundo.']]}),
-  Object.freeze({id:'duda',name:'Duda, figurinista',x:110.3,z:-35.4,radius:2.15,
+  Object.freeze({id:'duda',name:'Duda, figurinista',x:110.6,z:-33.6,radius:1.65,
     lines:[['DUDA','A roupa brilhante é pro espetáculo. Querem experimentar uma capa?'],
       ['CRIST','Obrigado! Já estamos viajando com roupa que cabe na mala.'],
       ['DUDA','Então segura essa fita, que ela não para de desenrolar!']]}),
-  Object.freeze({id:'nico',name:'Nico, técnico de som',x:114.9,z:-35.2,radius:2.15,
+  Object.freeze({id:'nico',name:'Nico, técnico de som',x:114.85,z:-34.1,radius:1.65,
     lines:[['NICO','Meu microfone ficou mudo depois que mexeram nos cabos.'],
       ['JOÃO','Eu entendo de rádio da roça. Deve ser parecido.'],
       ['NICO','É parecido até alguém ligar o microfone na saída da caixa!']]})

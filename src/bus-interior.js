@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {BUS_ROOM,BUS_NPCS,makeBusRoomColliders} from './bus-state.js';
+import {BUS_ROOM,BUS_NPCS,BUS_PROPS,makeBusRoomColliders} from './bus-state.js';
 
 // Cenário de interior em mini-hub separado, oculto até o embarque. Todos os
 // colliders pertencem apenas ao capítulo: a Fazenda e a Rodoviária não mudam.
@@ -33,8 +33,8 @@ export function buildBusInterior(scene,colliders,{box,ball,cyl,sign,mat}){
   const busLight=new THREE.PointLight('#ffe7c1',18,25,2);
   busLight.position.set(cx,3.1,cz);room.add(busLight);
   // Fileiras de bancos e encostos curvos low poly; nenhuma malha invade o corredor.
-  for(const x of [103,106.2,109.4,112.6]){
-    for(const z of [-35.6,-29.6]){
+  for(const x of [BUS_PROPS.seat.x,106.2,109.4,112.6]){
+    for(const z of [BUS_PROPS.seat.z,-29.6]){
       const direction=z<cz?1:-1;
       box(room,1.76,.30,1.52,seat,x,.93,z);
       const back=box(room,.28,1.07,1.52,mat('#6c4354'),x-.68,1.51,z);
@@ -52,7 +52,7 @@ export function buildBusInterior(scene,colliders,{box,ball,cyl,sign,mat}){
     }
   }
   // Palco improvisado da dança, no centro do corredor e sem colisões.
-  box(room,3.6,.027,2.02,mat('#9e6a73'),109.1,.25,-32.5);
+  box(room,3.6,.027,2.02,mat('#9e6a73'),BUS_PROPS.stage.x,.25,BUS_PROPS.stage.z);
   for(let i=0;i<4;i++){
     const x=107.7+i*.88;
     box(room,.47,.034,.10,gold,x,.28,-31.65);
@@ -61,7 +61,7 @@ export function buildBusInterior(scene,colliders,{box,ball,cyl,sign,mat}){
   sign(room,'FIGURINOS E SOM',114.1,3.43,-36.85,5.45,.52,'#584152');
   sign(room,'PRÓXIMA PARADA: SHOW!',103.7,3.40,-36.85,6.0,.52,'#4c5860');
   // Caixa de equipamentos: rótulos diferentes tornam a escolha visual verificável.
-  for(const [x,color,tag,star] of [[115.95,'#994b47','FIGURINOS',false],[116.65,'#333a42','ESTELAR',true],[117.25,'#486e59','ESPORTE',false]]){
+  for(const [x,color,tag,star] of [[115.95,'#994b47','FIGURINOS',false],[BUS_PROPS.case.x,'#333a42','ESTELAR',true],[117.25,'#486e59','ESPORTE',false]]){
     box(room,.59,.65,.70,mat(color),x,.64,-29.97);
     box(room,.40,.07,.09,steel,x,1.04,-29.53);
     if(star)ball(room,.13,gold,x,.77,-29.59,0);
@@ -69,17 +69,19 @@ export function buildBusInterior(scene,colliders,{box,ball,cyl,sign,mat}){
   }
   // Mesa de som: três conectores coloridos, fader e microfone que acende após conserto.
   const soundRack=new THREE.Group();room.add(soundRack);
-  box(soundRack,1.56,1.2,1.45,steel,116.55,.73,-35.48);
+  box(soundRack,1.56,1.2,1.45,steel,BUS_PROPS.rack.x,.73,BUS_PROPS.rack.z);
   box(soundRack,1.49,.10,1.28,mat('#768383'),116.55,1.38,-35.48);
   for(const [x,color] of [[116.1,'#bc4b4c'],[116.55,'#4d83d0'],[117.0,'#d9b552']]){
     const socket=cyl(soundRack,.13,.13,.06,mat(color),x,1.48,-35.70,10);
     socket.rotation.x=Math.PI/2;
   }
   const meter=box(soundRack,.86,.08,.18,mat('#aa624b'),116.55,1.55,-35.03);
-  const mic=new THREE.Group();mic.position.set(115.5,.35,-33.8);room.add(mic);
+  const mic=new THREE.Group();mic.position.set(BUS_PROPS.mic.x,.35,BUS_PROPS.mic.z);room.add(mic);
   cyl(mic,.065,.08,1.8,steel,0,.9,0,8);
   ball(mic,.20,mat('#434d57'),0,1.85,0,1);
   box(mic,.65,.12,.2,steel,0,.1,0);
+  // Cabine do motorista: a missão de revelação aponta para esta área.
+  sign(room,'MOTORISTA · DESTINO',100.55,2.82,-36.77,4.0,.43,'#4c5860');
   // NPCs da trupe: cada qual tem figura, roupa e reação distintos.
   const troupe=[];
   for(let i=0;i<BUS_NPCS.length;i++){
