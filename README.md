@@ -1,6 +1,15 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.6.12 — guichê do portão 2 corrigido e desafios da Route 66 separados).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.6.13 — direção da Route 66 com aceleração, freio, inércia lateral, velocímetro e cenário dinâmico).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+
+## QA-12 — Direção mais completa na Route 66 (v0.6.13)
+
+- Os dois trechos dirigíveis continuam com avanço automático acessível, mas agora **W/↑ acelera**, **S/↓ freia** e **A/D ou ←/→ vira com resposta gradual**; joystick mobile e analógico esquerdo usam os mesmos eixos.
+- A van apresenta inclinação lateral pela velocidade da direção, balanço suave, câmera acompanhando o veículo e **velocímetro**; pedras e cactos reutilizáveis deslocam-se ao lado da pista.
+- Colisões são verificadas na posição em que o veículo **cruzou** cada obstáculo, reduzem brevemente a velocidade e continuam não punitivas.
+- Saves antigos da Route 66 migram automaticamente para o novo estado de direção sem perder etapa, progresso ou avaliação. A versão interna do save permanece 7.
+- Adicionados testes de aceleração, frenagem, direção, FPS diferentes, colisões, compatibilidade de saves e integração gráfica.
+- [Relatório técnico QA-12](QA-12-DIRECAO-ROUTE66.md).
 
 ## QA-11 — Guichê: alternativas de portão funcionando (v0.6.12)
 

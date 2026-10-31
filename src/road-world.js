@@ -78,6 +78,25 @@ export function buildRoute66(scene,colliders,{box,ball,cyl,sign,mat}){
   }
   box(van,1.45,.10,.12,mat('#e2b66b'),0,2.40,-.35);
   box(van,1.90,.12,.18,mat('#a0443d'),0,.68,2.18);
+  // Vegetação e pedras passam à margem da pista enquanto o carro anda.
+  // Reutilizar grupos, em vez de construir novos objetos a cada quadro.
+  const roadside=[];
+  for(let i=0;i<14;i++){
+    const g=new THREE.Group();group.add(g);
+    const side=i%2===0?-1:1;
+    g.position.x=cx+side*(7.2+(i%3)*1.35);
+    if(i%3===0){
+      const stone=ball(g,.72,mat('#a88b6a'),0,.35,0,1);
+      stone.scale.set(1.45,.67,1.1);
+    }else{
+      const cactus=mat(i%2?'#60845d':'#718c60');
+      cyl(g,.16,.20,1.65,cactus,0,.86,0,7);
+      cyl(g,.11,.12,.62,cactus,side*.39,1.15,0,7);
+      box(g,.48,.13,.13,cactus,side*.20,1.0,0);
+    }
+    g.visible=false;
+    roadside.push({group:g,phase:i*8.9});
+  }
   // Obstáculos representados por barril, cone e caixa; coordenadas de estrada
   // vêm exclusivamente das regras de jogo do road-state.
   const hazards=new Map();
@@ -129,13 +148,17 @@ export function buildRoute66(scene,colliders,{box,ball,cyl,sign,mat}){
     setDriving(value){
       driving=!!value;
       for(const list of hazards.values())for(const {obj} of list)obj.visible=false;
+      for(const prop of roadside)prop.group.visible=active&&driving;
       van.visible=true;
     },
     setDrive(run){
       if(!run||!ROAD_DRIVES[run.stage])return;
       van.position.x=cx+run.offset;
-      van.rotation.z=-run.offset*.035;
-      van.rotation.y=-run.offset*.020;
+      // Inclinação corresponde à velocidade lateral, não à posição na faixa.
+      const lateral=Number.isFinite(run.lateralVelocity)?run.lateralVelocity:0;
+      van.rotation.z=-lateral*.018;
+      van.rotation.y=-lateral*.035;
+      van.position.y=Math.sin(run.progress*.9)*.015;
       for(const [stage,items] of hazards){
         for(const {obj,h} of items){
           const distance=h.at-run.progress;
@@ -144,8 +167,12 @@ export function buildRoute66(scene,colliders,{box,ball,cyl,sign,mat}){
         }
       }
       for(const line of laneStripes){
-        const delta=((line.baseZ+run.progress*.07-12)%30+30)%30;
+        const delta=((line.baseZ+run.progress*.11-12)%30+30)%30;
         line.mesh.position.z=12+delta;
+      }
+      for(const prop of roadside){
+        const distance=((prop.phase+run.progress*.17)%30+30)%30;
+        prop.group.position.z=cz-15+distance;
       }
       for(const w of wheels)w.rotation.x=-run.progress*.22;
     },
@@ -157,7 +184,10 @@ export function buildRoute66(scene,colliders,{box,ball,cyl,sign,mat}){
         n.userData.torso.rotation.z=Math.sin(v)*.03;
         n.userData.arm.rotation.x=-.16+Math.sin(v)*.12;
       }
-      if(!driving){van.position.x=cx;van.rotation.set(0,0,0);}
+      if(!driving){
+        van.position.x=cx;van.position.y=0;van.rotation.set(0,0,0);
+        for(const prop of roadside)prop.group.visible=false;
+      }
     },
     isDriving(){return driving;}
   };

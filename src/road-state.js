@@ -6,11 +6,11 @@ export const ROAD_SPAWN=Object.freeze({x:-34,z:32});
 export const ROAD_QUESTS=Object.freeze([
   {id:'roadWelcome',title:'Conheça a Route 66',hint:'O voo com conexão terminou. Explore a parada turística e veja o mapa de estrada.'},
   {id:'roadRoute',title:'Crist: encontre a rota panorâmica',hint:'Leia as placas antes de sair. A Route 66 atravessa pequenas cidades e regiões desérticas.'},
-  {id:'roadDrive1',title:'Dirija pelo primeiro trecho',hint:'Entre na van turística. Use A/D, SETAS ou analógico para desviar dos obstáculos. Não há game over.'},
+  {id:'roadDrive1',title:'Dirija pelo primeiro trecho',hint:'A/D ou esquerda/direita para virar. W acelera, S freia; no joystick use os dois eixos. Sem game over.'},
   {id:'roadStop',title:'Descanse na lanchonete da estrada',hint:'Na parada, converse com a atendente e conheça mais histórias da viagem.'},
   {id:'roadPhoto',title:'Tire uma foto com os dois velhinhos',hint:'Encontre o mirante da Route 66 e registre a aventura dos dois.'},
   {id:'roadRepair',title:'João: faça uma revisão no veículo',hint:'Antes da próxima curva, João precisa conferir o radiador e o nível de água.'},
-  {id:'roadDrive2',title:'Encare os desvios do deserto',hint:'Dirija a van e desvie dos objetos na estrada. Seguir bem reduz as confusões; errar não bloqueia a fase.'},
+  {id:'roadDrive2',title:'Encare os desvios do deserto',hint:'Controle direção e velocidade com WASD, setas ou analógico. Solte o acelerador para avançar normalmente; batidas não bloqueiam a fase.'},
   {id:'roadBreakdown',title:'Descubra por que a van parou',hint:'O motor falhou. Inspecione o veículo e prepare o plano de sobrevivência para o próximo capítulo.'}
 ]);
 export const ROAD_TARGETS=Object.freeze({
@@ -105,9 +105,16 @@ export const ROAD_DRIVES=Object.freeze({
     {at:267,lane:1,type:'cone'},{at:310,lane:0,type:'crate'}]}
 });
 const clamp=(v,low,high)=>Math.max(low,Math.min(high,v));
+export const ROAD_HANDLING=Object.freeze({
+  lateralLimit:2.75,steerSpeed:5.2,steerResponse:10,straightenResponse:13,
+  speedUp:3.5,slowDown:7,brakeRatio:.38,boostRatio:1.32,impactRatio:.64
+});
 export function initialRoadRun(stage){
-  if(!ROAD_DRIVES[stage])return null;
-  return {stage,progress:0,offset:0,hits:0,passed:0};
+  const def=ROAD_DRIVES[stage];
+  if(!def)return null;
+  // Campos novos opcionais: saves antigos ganham a velocidade de cruzeiro.
+  return {stage,progress:0,offset:0,hits:0,passed:0,
+    speed:def.speed,lateralVelocity:0};
 }
 export function normalizeRoadRun(data,stage){
   const def=ROAD_DRIVES[stage],fresh=initialRoadRun(stage);
@@ -115,27 +122,51 @@ export function normalizeRoadRun(data,stage){
   return {
     stage,
     progress:Number.isFinite(data.progress)?clamp(data.progress,0,def.length-.001):0,
-    offset:Number.isFinite(data.offset)?clamp(data.offset,-2.75,2.75):0,
+    offset:Number.isFinite(data.offset)?clamp(data.offset,-ROAD_HANDLING.lateralLimit,ROAD_HANDLING.lateralLimit):0,
     hits:Number.isInteger(data.hits)?clamp(data.hits,0,def.hazards.length):0,
-    passed:Number.isInteger(data.passed)?clamp(data.passed,0,def.hazards.length):0
+    passed:Number.isInteger(data.passed)?clamp(data.passed,0,def.hazards.length):0,
+    speed:Number.isFinite(data.speed)?clamp(data.speed,def.speed*.3,def.speed*ROAD_HANDLING.boostRatio):def.speed,
+    lateralVelocity:Number.isFinite(data.lateralVelocity)?clamp(data.lateralVelocity,-ROAD_HANDLING.steerSpeed,ROAD_HANDLING.steerSpeed):0
   };
 }
-export function advanceRoadRun(current,steer,dt){
+export function advanceRoadRun(current,steer,dt,throttle=0){
   const def=ROAD_DRIVES[current?.stage];
   if(!def)return {state:null,completed:false,hit:null};
   const run=normalizeRoadRun(current,current.stage);
   const t=clamp(Number.isFinite(dt)?dt:0,0,.05);
   const direction=clamp(Number.isFinite(steer)?steer:0,-1,1);
-  const offset=clamp(run.offset+direction*t*5.7,-2.75,2.75);
-  const speed=def.speed; // forward auto drive: only steering needs attention
+  const gas=clamp(Number.isFinite(throttle)?throttle:0,-1,1);
+  // Velocidade de cruzeiro automática acessível: W acelera, S freia.
+  // Resposta exponencial evita variar conforme a taxa de frames.
+  const speedRatio=gas>=0?1+gas*(ROAD_HANDLING.boostRatio-1):
+    1+gas*(1-ROAD_HANDLING.brakeRatio);
+  const targetSpeed=def.speed*speedRatio;
+  const speedResponse=targetSpeed<run.speed?ROAD_HANDLING.slowDown:ROAD_HANDLING.speedUp;
+  let speed=run.speed+(targetSpeed-run.speed)*(1-Math.exp(-speedResponse*t));
+  const lateralTarget=direction*ROAD_HANDLING.steerSpeed;
+  const steerResponse=Math.abs(direction)>.05?ROAD_HANDLING.steerResponse:ROAD_HANDLING.straightenResponse;
+  let lateralVelocity=run.lateralVelocity+
+    (lateralTarget-run.lateralVelocity)*(1-Math.exp(-steerResponse*t));
+  let offset=clamp(run.offset+lateralVelocity*t,-ROAD_HANDLING.lateralLimit,ROAD_HANDLING.lateralLimit);
+  if((offset===ROAD_HANDLING.lateralLimit&&lateralVelocity>0)||
+     (offset===-ROAD_HANDLING.lateralLimit&&lateralVelocity<0))lateralVelocity=0;
   const progress=clamp(run.progress+speed*t,0,def.length);
   let passed=run.passed,hits=run.hits,hit=null;
   while(passed<def.hazards.length && progress>=def.hazards[passed].at){
     const hazard=def.hazards[passed];
-    if(Math.abs(offset-hazard.lane*2.27)<.98){hits++;hit=hazard;}
+    // Reconstituir a posição na hora de cruzar o obstáculo, em vez de
+    // testar só a posição lateral no fim do frame (colisões mais justas).
+    const fraction=(progress>run.progress)?
+      clamp((hazard.at-run.progress)/(progress-run.progress),0,1):1;
+    const atCrossing=run.offset+(offset-run.offset)*fraction;
+    if(Math.abs(atCrossing-hazard.lane*2.27)<.98){
+      hits++;hit=hazard;
+      speed=Math.max(def.speed*.38,speed*ROAD_HANDLING.impactRatio);
+    }
     passed++;
   }
-  return {state:{stage:run.stage,progress,offset,hits,passed},completed:progress>=def.length,hit};
+  return {state:{stage:run.stage,progress,offset,hits,passed,speed,lateralVelocity},
+    completed:progress>=def.length,hit};
 }
 export function roadGrade(hits){
   if(hits===0)return 'PERFEITO';

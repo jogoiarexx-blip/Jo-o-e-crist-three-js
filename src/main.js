@@ -30,7 +30,7 @@ const ui={canvas:el('game'),loading:el('loading'),hud:el('hud'),mission:el('miss
   promptText:el('promptText'),toast:el('toast'),dialog:el('dialog'),speaker:el('dialogSpeaker'),
   dialogText:el('dialogText'),dialogCount:el('dialogCount'),start:el('startScreen'),
   pause:el('pauseScreen'),end:el('endScreen'),mobile:el('mobileControls'),
-  event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText'),lottery:el('lotteryPanel'),lotteryButton:el('lotteryButton'),lotteryReveal:el('lotteryReveal'),soundBtn:el('soundBtn'),choice:el('cityChoice'),choiceHeading:el('cityChoiceHeading'),choiceText:el('cityChoiceText'),choiceButtons:el('cityChoiceButtons'),roadHud:el('roadHud'),roadProgress:el('roadProgress'),roadHits:el('roadHits'),roadHeading:el('roadHeading'),roadDistance:el('roadDistance'),desertHud:el('desertHud'),desertHeatBar:el('desertHeatBar'),desertHeatLabel:el('desertHeatLabel')};
+  event:el('eventPanel'),eventBar:el('eventBar'),debug:el('debug'),fatal:el('fatal'),fatalText:el('fatalText'),lottery:el('lotteryPanel'),lotteryButton:el('lotteryButton'),lotteryReveal:el('lotteryReveal'),soundBtn:el('soundBtn'),choice:el('cityChoice'),choiceHeading:el('cityChoiceHeading'),choiceText:el('cityChoiceText'),choiceButtons:el('cityChoiceButtons'),roadHud:el('roadHud'),roadProgress:el('roadProgress'),roadHits:el('roadHits'),roadHeading:el('roadHeading'),roadDistance:el('roadDistance'),roadSpeed:el('roadSpeed'),desertHud:el('desertHud'),desertHeatBar:el('desertHeatBar'),desertHeatLabel:el('desertHeatLabel')};
 const SAVE_KEY='joaoCrist3DSave_v1';
 const MEMORY_KEY='joaoCrist3DFarmMemories_v1';
 const BUS_RHYTHM_KEY='joaoCrist3DBusRhythm_v1';
@@ -369,7 +369,7 @@ function beginRoadDrive(){
   ui.roadHeading.textContent=step===29?'ROUTE 66 · TRECHO 1':'ROUTE 66 · DESVIOS DO DESERTO';
   lastRoadSave=clockTime;
   updateRoadHud();
-  notify('Dirija com A/D, SETAS, analógico ou controle de toque. Desvie dos obstáculos!');
+  notify('A/D ou ← → para virar · W acelera · S freia · analógico/joystick nos dois eixos.');
   snapCamera();
 }
 function updateRoadHud(){
@@ -378,6 +378,7 @@ function updateRoadHud(){
   ui.roadProgress.style.transform='scaleX('+clamp(roadRun.progress/total,0,1)+')';
   ui.roadHits.textContent=roadRun.hits+' ENCONTROS COM OBSTÁCULOS';
   ui.roadDistance.textContent=Math.ceil(total-roadRun.progress)+' m RESTANTES';
+  ui.roadSpeed.textContent=Math.round(roadRun.speed*3.6)+' km/h';
 }
 function finishRoadDrive(){
   if(!roadRun)return;
@@ -398,8 +399,8 @@ function finishRoadDrive(){
   snapCamera();
 }
 function updateRoadDrive(dt){
-  const steer=getInput(dt).x;
-  const result=advanceRoadRun(roadRun,steer,dt);
+  const input=getInput(dt);
+  const result=advanceRoadRun(roadRun,input.x,dt,input.y);
   if(!result.state)return;
   roadRun=result.state;
   world.road.setDrive(roadRun);
@@ -664,9 +665,13 @@ function updateCamera(dt,immediate=false){
   const p=actors[heroId].position;
   if(roadRun){
     const vehicle=world.road.van.position;
-    const desired=new THREE.Vector3(vehicle.x,5.2,vehicle.z+9.3);
-    camera.position.lerp(desired,immediate?1:1-Math.exp(-dt*4.5));
-    camera.lookAt(vehicle.x,1.1,vehicle.z-5.5);
+    // Acompanhamento com atraso curto na lateral, mais estável nas curvas.
+    // Velocidade maior abre um pouco o enquadramento da estrada.
+    const speedRatio=roadRun.speed/ROAD_DRIVES[roadRun.stage].speed;
+    const desired=new THREE.Vector3(vehicle.x*.82+ROAD_CENTER.x*.18,
+      5.0+Math.max(0,speedRatio-1)*1.1,vehicle.z+9.0+Math.max(0,speedRatio-1)*2);
+    camera.position.lerp(desired,immediate?1:1-Math.exp(-dt*4.0));
+    camera.lookAt(vehicle.x,1.0,vehicle.z-6.3);
     return;
   }
   const inside=isInsideHouse(p.x,p.z)||(step>=BUS_START&&step<ROAD_START);

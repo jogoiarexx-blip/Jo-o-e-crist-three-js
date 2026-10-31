@@ -48,7 +48,8 @@
 .road-head span:last-child,.road-foot span:last-child{font-variant-numeric:tabular-nums}
 .road-track{height:8px;margin:11px 0 8px;background:#273f41;border-radius:9px;overflow:hidden}
 #roadProgress{height:100%;width:100%;transform:scaleX(0);transform-origin:left;background:#eac678}
-.road-foot{color:#d2d6cc;font-size:10px;letter-spacing:.035em}
+.road-foot{color:#d2d6cc;font-size:10px;letter-spacing:.035em;flex-wrap:wrap}
+#roadSpeed{font-variant-numeric:tabular-nums;color:#f2cd83;font-weight:900;white-space:nowrap}
 @media(max-width:640px){.road-hud{bottom:158px;max-width:94vw;padding:10px 12px}.road-head{font-size:10px}.road-foot{font-size:8px;flex-wrap:wrap;gap:5px}}
 
 /* Capítulo 5 — calor sem game over, painel com contraste discreto. */
