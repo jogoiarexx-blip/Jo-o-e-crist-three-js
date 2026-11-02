@@ -24,6 +24,7 @@ import {createElder,animateElder,gestureElder} from './characters.js';
 import {canSwitchHero,isCompletedSave,shouldSimulateWorld} from './game-state.js';
 import {LOTTERY_STAGE,nextLotteryStage,lotteryStageLabel} from './lottery-state.js';
 import {resolvePuzzle} from './puzzle-resolver.js';
+import {physicalActionAt,roadPhotoView} from './interaction-visual-state.js';
 import {loadAllCharacterGlbs} from './avatar-glb.js';
 import {QUESTS,INTRO,SCENES,getQuest,validateSave,PACKING_ITEMS,nextPackingTarget,getPackingProgress,normalizePacking,LOTTERY_NUMBERS,canUsePackingItem,FINAL_STEP,SAVE_VERSION} from './story.js';
 
@@ -184,6 +185,7 @@ function updateMission(){
   world.road?.setDriving?.(!!roadRun);
   ui.desertHud.hidden=step<DESERT_START||step>=FINAL_STEP;
   world.desert?.setCarrier?.(actors?.joao?.position);
+  world.road?.setPhotoTaken?.(roadPhotoView(step).developed);
   audio?.setBusActive?.(step>=BUS_START&&step<AIRPORT_START&&!paused);
   audio?.setRoadActive?.(!!roadRun&&!paused);
   if(step>6)world.setGateOpen?.(true);
@@ -342,6 +344,7 @@ function useTarget(){
   }
   if(step===4&&target.id!=='suitcase'){
     if(!packing.includes(target.id)){
+      gestureElder(actors[heroId],'reach',1.25);
       packing.push(target.id);
       world.setPacked?.(packing);
       writeSave();
@@ -352,6 +355,14 @@ function useTarget(){
       showDialogue(SCENES[target.id]);
     }
     return;
+  }
+  const action=physicalActionAt(step,target.id);
+  if(action){
+    gestureElder(actors[heroId],'reach',1.35);
+    if(action==='photo')world.road?.takePhoto?.(clockTime);
+    if(action==='fill')world.desert?.playAction?.('fill',clockTime);
+    if(action==='deliver')world.desert?.playAction?.('deliver',clockTime);
+    if(action==='close-suitcase')tone(430,.13,'triangle',.03);
   }
   const activeStep=step;
   const scenes=[SCENES.wake,SCENES.radio,SCENES.ticket,SCENES.crist,SCENES.suitcase,SCENES.pantera,SCENES.gate,SCENES.cityWelcome,null,null,null,SCENES.bus,BUS_SCENES.seat,BUS_SCENES.crew,null,null,null,null,BUS_SCENES.reveal,AIRPORT_SCENES.welcome,null,null,null,null,null,null,AIRPORT_SCENES.board,ROAD_SCENES.welcome,null,null,ROAD_SCENES.stop,ROAD_SCENES.photo,null,null,ROAD_SCENES.breakdown,DESERT_SCENES.arrival,DESERT_SCENES.shade,DESERT_SCENES.can,null,DESERT_SCENES.fill,DESERT_SCENES.carry,DESERT_SCENES.mechanic,null,null,null,DESERT_SCENES.lookout];
@@ -482,6 +493,10 @@ function submitCityChoice(optionId){
   choiceKind=null;ui.choice.hidden=true;ui.mobile.hidden=paused||!mobile;
   if(correct){
     tone(640,.2,'triangle',.033);
+    if(kind==='desertHose'||kind==='desertCool'){
+      gestureElder(actors[heroId],'reach',1.4);
+      world.desert?.playAction?.(kind==='desertHose'?'hose':'cool',clockTime);
+    }
     const completed={
       bag:{lines:SCENES.bagSolved,next:10},route:{lines:SCENES.routeSolved,next:11},
       case:{lines:BUS_SCENES.case,next:15},inspect:{lines:BUS_SCENES.inspect,next:16},

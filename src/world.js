@@ -19,6 +19,7 @@ import {createAtmosphere} from './atmosphere.js';
 import {buildScenery,hideLegacyRoadStripes} from './scenery.js';
 import {desertColliders} from './desert-state.js';
 import {mulberry32} from './scatter.js';
+import {suitcaseView} from './interaction-visual-state.js';
 
 const mat=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness:0.96,flatShading:true,...extra});
 const grass=mat('#8bad61'), dirt=mat('#bda57a'), roadMat=mat('#494b47'), wood=mat('#8a5c3b');
@@ -439,7 +440,22 @@ export function buildWorld(scene,{renderer=null,quality=null}={}){
   suitcase.position.set(FARM_OBJECTS.suitcase.x,0,FARM_OBJECTS.suitcase.z);
   scene.add(suitcase);
   box(suitcase,.88,.56,.85,mat('#a36b42'),0,.52,0);
-  box(suitcase,.56,.09,.12,mat('#d9c4a4'),0,.87,.04);
+  const suitcaseLid=new THREE.Group();
+  suitcaseLid.position.set(0,.81,-.40);suitcase.add(suitcaseLid);
+  box(suitcaseLid,.94,.095,.88,mat('#bd8657'),0,0,.42);
+  box(suitcaseLid,.66,.045,.13,mat('#f1d7a3'),0,.06,.65);
+  const suitcaseContents={};
+  const packedColors={documents:'#f0e2bf',clothes:'#75999f',farofa:'#c9a66a'};
+  for(const [i,id] of ['documents','clothes','farofa'].entries()){
+    const item=box(suitcase,.23,.09,.49,mat(packedColors[id]),(i-1)*.26,.75,0);
+    item.visible=false;suitcaseContents[id]=item;
+  }
+  let suitcaseStep=0,suitcasePacked=[];
+  const syncSuitcase=()=>{
+    const visual=suitcaseView(suitcaseStep,suitcasePacked);
+    for(const [id,obj] of Object.entries(suitcaseContents))obj.visible=visual.stored.includes(id);
+    suitcaseLid.userData.targetAngle=visual.lidAngle;
+  };
   box(scene,2.1,1,.85,mat('#bc946d'),4.5,.53,-9);
   // Fazenda — os itens precisam ser realmente encontrados e guardados.
   // São malhas procedurais temporárias, substituíveis por GLBs posteriormente.
@@ -551,6 +567,7 @@ export function buildWorld(scene,{renderer=null,quality=null}={}){
     },
     isInsideHouse,
     setChapter(step){
+      suitcaseStep=step;syncSuitcase();
       const active=chapterAt(step);
       if(active!=='outdoor')chapterCache.get(active);
       // Só os hubs efetivamente criados participam da ativação/desativação.
@@ -568,12 +585,17 @@ export function buildWorld(scene,{renderer=null,quality=null}={}){
     // Em conversas e escolhas a coluna de luz some para não cobrir os rostos.
     setMarkersMuted(muted){markerBeamMaterial.visible=!muted;for(const o of Object.values(markers))o.pulse.visible=!muted;},
     setPacked(ids){
-      const done=new Set(Array.isArray(ids)?ids:[]);
+      suitcasePacked=Array.isArray(ids)?[...ids]:[];
+      const done=new Set(suitcasePacked);
       for(const [id,object] of Object.entries(packingProps))object.visible=!done.has(id);
+      syncSuitcase();
     },
     reactPantera(time){panteraExcitedUntil=time+8.5;},
     update(time,target,step=0,dt=.016){
       if(step<BUS_START){
+        // Mala realmente abre, recebe itens visíveis e fecha após o objetivo.
+        const k=1-Math.exp(-Math.max(0,dt)*7.5);
+        suitcaseLid.rotation.x+=(suitcaseLid.userData.targetAngle-suitcaseLid.rotation.x)*k;
         farmhouse.setInteriorActive(isInsideHouse(target.x,target.z));
         gate.hinge.rotation.y+=((gateOpened?Math.PI*.5:0)-gate.hinge.rotation.y)*.1;
       }

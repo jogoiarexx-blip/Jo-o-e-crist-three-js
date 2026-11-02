@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {DESERT_ROOM,DESERT_SHADE,DESERT_NPCS,desertColliders,desertCarryActive} from './desert-state.js';
+import {desertRepairView} from './interaction-visual-state.js';
 
 // Ambiente compacto independente, ativado apenas depois do fim da Route 66.
 export function buildDesert(scene,colliders,{box,ball,cyl,sign,mat}){
@@ -35,6 +36,15 @@ export function buildDesert(scene,colliders,{box,ball,cyl,sign,mat}){
   // Tampa do motor aberta e vapor delicado; não atravessa personagens.
   const bonnet=new THREE.Group();bonnet.position.set(0,1.52,-1.57);van.add(bonnet);
   const hood=box(bonnet,2.24,.13,1.38,cream,0,.38,-.40);hood.rotation.x=.30;
+  bonnet.rotation.x=1.0;
+  // A mangueira só aparece conectada quando a peça correta foi escolhida.
+  const hosePath=new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-.65,1.42,-1.95),new THREE.Vector3(-.29,1.29,-2.07),
+    new THREE.Vector3(.22,1.45,-2.09),new THREE.Vector3(.67,1.53,-1.91)]);
+  const installedHose=new THREE.Mesh(new THREE.TubeGeometry(hosePath,12,.085,6,false),metal);
+  installedHose.visible=false;van.add(installedHose);
+  const repairLamp=ball(van,.13,mat('#77b879'),.81,1.66,-1.86,1);
+  repairLamp.visible=false;
   const steam=[];
   for(let i=0;i<4;i++){
     const cloud=ball(van,.19,mat('#c5d3cd',{transparent:true,opacity:.30}),-.45+i*.32,2.05,-1.67,0);
@@ -89,7 +99,12 @@ export function buildDesert(scene,colliders,{box,ball,cyl,sign,mat}){
   cyl(can,.24,.24,.10,cream,0,.86,0,9);
   const handle=box(can,.38,.11,.13,dark,0,1.02,0);
   handle.rotation.z=.08;
-  const carryState={step:35,joao:{x:DESERT_ROOM.xMin,z:0}};
+  // Medidor externo permite observar a água no galão low poly.
+  const waterGauge=box(can,.17,.69,.028,mat('#c9f1ee',{transparent:true,opacity:.75}),0,.48,.39);
+  waterGauge.visible=false;
+  const waterStream=cyl(root,.055,.075,1.30,mat('#85c7da',{transparent:true,opacity:.68}),-68.4,1.20,-4,8);
+  waterStream.visible=false;
+  const carryState={step:35,joao:{x:DESERT_ROOM.xMin,z:0},action:null,until:-1};
   const npcs=[];
   for(let i=0;i<DESERT_NPCS.length;i++){
     const data=DESERT_NPCS[i],person=new THREE.Group();
@@ -119,18 +134,40 @@ export function buildDesert(scene,colliders,{box,ball,cyl,sign,mat}){
       else for(const box of solid){const ix=colliders.indexOf(box);if(ix>=0)colliders.splice(ix,1);}
     },
     setStep(step){carryState.step=step;this.setCarrier(carryState.joao);},
+    playAction(action,time){
+      if(!['fill','deliver','hose','cool'].includes(action))return false;
+      carryState.action=action;carryState.until=(Number.isFinite(time)?time:0)+.9;
+      // A troca de peça e a revisão final começam VISUALMENTE ao escolher
+      // a resposta certa, antes do último diálogo da missão.
+      if(action==='hose')installedHose.visible=true;
+      if(action==='cool')repairLamp.visible=true;
+      return true;
+    },
     setCarrier(pos){
       if(pos&&Number.isFinite(pos.x)&&Number.isFinite(pos.z))carryState.joao={x:pos.x,z:pos.z};
-      const stage=carryState.step;
-      can.visible=stage>=37;
-      if(stage===40)can.position.set(carryState.joao.x+.28,.70,carryState.joao.z+.33);
-      else if(stage>=41)can.position.set(-60.5,.05,-12.7);
-      else if(stage>=39)can.position.set(-68.4,0,-4.0);
+      const visual=desertRepairView(carryState.step);
+      can.visible=visual.canVisible;
+      if(visual.carrying)can.position.set(carryState.joao.x+.34,.71,carryState.joao.z+.25);
+      else if(visual.delivered)can.position.set(-60.5,.05,-12.7);
+      else if(carryState.step>=39)can.position.set(-68.4,0,-4.0);
       else can.position.set(-72.0,0,-19.2);
-      can.scale.setScalar(stage===40?.83:1);
+      can.scale.setScalar(visual.carrying?.83:1);
+      waterGauge.visible=visual.filled;
+      installedHose.visible=visual.hoseInstalled||carryState.action==='hose'||carryState.action==='cool';
+      repairLamp.visible=visual.repaired||carryState.action==='cool';
     },
     update(time){
       if(!active)return;
+      const visual=desertRepairView(carryState.step);
+      const k=.10;
+      bonnet.rotation.x+=((visual.hoodOpen?1.0:.02)-bonnet.rotation.x)*k;
+      const acting=time<carryState.until;
+      waterStream.visible=acting&&carryState.action==='fill';
+      if(waterStream.visible){
+        waterStream.scale.y=.7+Math.abs(Math.sin(time*12))*.38;
+        waterGauge.visible=true;
+        waterGauge.scale.y=Math.min(1,1-(carryState.until-time)/.9);
+      }else waterGauge.scale.y=1;
       for(let i=0;i<npcs.length;i++){
         const p=npcs[i],t=time*1.1+p.userData.phase;
         p.userData.torso.position.y=1.31+Math.sin(t)*.012;
@@ -139,7 +176,7 @@ export function buildDesert(scene,colliders,{box,ball,cyl,sign,mat}){
       }
       for(let i=0;i<steam.length;i++){
         const p=steam[i];p.position.y=2.05+((time*.31+i*.24)%1.1);p.scale.setScalar(.7+((time*.27+i*.31)%1)*.8);
-        p.visible=carryState.step<43;
+        p.visible=visual.steam;
       }
     }
   };

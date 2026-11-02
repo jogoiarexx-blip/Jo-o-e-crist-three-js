@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {ROAD_CENTER,ROAD_NPCS,ROAD_DRIVES,ROAD_TARGETS,ROAD_START,makeRoadColliders} from './road-state.js';
+import {roadPhotoView} from './interaction-visual-state.js';
 
 // Diorama da Route 66: veículo controlável em faixa virtual, obstáculos dinâmicos
 // e uma pequena área explorável com lanchonete, mirante e oficina.
@@ -46,6 +47,22 @@ export function buildRoute66(scene,colliders,{box,ball,cyl,sign,mat}){
   sign(group,'FOTO · ROUTE 66',-19,3.06,39.1,5.1,.72,'#31575d');
   box(group,2.5,.17,.70,mat('#917253'),-21.5,.75,37.9);
   for(const x of [-22.4,-20.6])box(group,.13,.68,.14,dark,x,.41,37.9);
+  // Fotografia visível: câmera no mirante, flash e foto revelada depois
+  // da interação. O progresso persiste pela etapa do save (step >= 32).
+  const cameraProp=new THREE.Group();cameraProp.position.set(-19.1,0,34.1);group.add(cameraProp);
+  box(cameraProp,.75,.48,.36,dark,0,1.43,0);
+  cyl(cameraProp,.20,.22,.22,mat('#b8afa2'),0,1.44,.28,12).rotation.x=Math.PI/2;
+  box(cameraProp,.34,.10,.18,mat('#5c5450'),-.18,1.73,0);
+  const photoCard=new THREE.Group();photoCard.position.set(-18.2,0,35.6);group.add(photoCard);
+  box(photoCard,1.28,.94,.08,mat('#f7e7cd'),0,1.50,0);
+  box(photoCard,1.08,.67,.10,mat('#8aa5a2'),0,1.56,.06);
+  for(const x of [-.25,.25])ball(photoCard,.16,mat('#b99a7d'),x,1.65,.14,0);
+  box(photoCard,.78,.07,.07,mat('#d7b389'),0,1.20,.13);
+  const shutter=new THREE.Mesh(new THREE.SphereGeometry(.66,10,6),
+    new THREE.MeshBasicMaterial({color:'#fff7c8',transparent:true,opacity:.7,depthWrite:false}));
+  shutter.position.set(-19.1,1.50,34.7);shutter.visible=false;group.add(shutter);
+  let photoTaken=false,flashUntil=-1;
+  photoCard.visible=false;
   // Oficina de estrada: bancada, caixa de ferramentas e galão de água.
   box(group,4.8,2.7,3.4,mat('#6f7776'),-17.5,1.43,18.5);
   box(group,5.4,.26,3.9,red,-17.5,2.83,18.5);
@@ -139,6 +156,12 @@ export function buildRoute66(scene,colliders,{box,ball,cyl,sign,mat}){
   }
   let active=false,driving=false;
   const roadGroup={group,van,people,
+    setPhotoTaken(taken){
+      photoTaken=!!taken;photoCard.visible=photoTaken;
+    },
+    takePhoto(time){
+      photoTaken=true;photoCard.visible=true;flashUntil=(Number.isFinite(time)?time:0)+.48;
+    },
     setActive(on){
       if(active===!!on)return;
       active=!!on;group.visible=active;
@@ -179,6 +202,14 @@ export function buildRoute66(scene,colliders,{box,ball,cyl,sign,mat}){
     },
     update(t,step){
       if(!active)return;
+      const visual=roadPhotoView(step);
+      cameraProp.visible=visual.cameraVisible;
+      shutter.visible=t<flashUntil;
+      if(shutter.visible){
+        const remaining=Math.max(0,(flashUntil-t)/.48);
+        shutter.scale.setScalar(.45+(1-remaining)*1.75);
+        shutter.material.opacity=remaining*.8;
+      }
       for(let i=0;i<people.length;i++){
         const n=people[i],v=t*1.3+n.userData.phase;
         n.userData.torso.position.y=1.30+Math.sin(v)*.015;

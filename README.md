@@ -1,6 +1,15 @@
 # João & Crist — A Viagem Mais Maluca do Mundo (3D)
 
-**Protótipo jogável (v0.7.0 — céu e luz por capítulo, horizontes, cenografia viva, câmera cinematográfica e placas legíveis).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+**Protótipo jogável (v0.7.1 — ações físicas na mala, foto da Route 66 e reparos visuais da van).** Dois velhinhos do interior ganham na loteria e partem rumo a Las Vegas. Este repositório é a versão independente em **Three.js**; a edição 16-bit original permanece no outro repositório.
+
+## QA-14 — Interações físicas e feedback de objetivos (v0.7.1)
+
+- **Fazenda:** a mala abre quando os itens são procurados, mostra documentos, roupas e farofa efetivamente guardados, e fecha após concluir o objetivo. Cada item ainda desaparece de sua posição original somente após coleta.
+- **Route 66:** um objeto de câmera aparece no mirante; interagir para fotografar produz um flash e uma lembrança tridimensional, visível ao retomar os próximos checkpoints.
+- **Deserto:** galão passa de vazio a cheio com indicação visual de água; bomba exibe fluxo durante a coleta; a mangueira aparece após a escolha correta e o capô fecha enquanto o vapor desaparece após concluir a revisão.
+- **Persistência:** os estados gráficos são derivados do step e dos itens já salvos. A versão do save continua 7 e as missões anteriores permanecem.
+- Testes em `tests/interaction-visuals.test.mjs`, com regressões para checkpoints e integração dos efeitos.
+- [Relatório QA-14](QA-14-INTERACOES-FISICAS.md).
 
 ## QA-13 — Gráficos, câmera e polimento das fases (v0.7.0)
 
